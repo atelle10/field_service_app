@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   DistributionStrategy,
@@ -12,12 +12,15 @@ import {
   createPlaceholderPassengers,
 } from '@/services/group-assignment-service';
 
+const MIN_CALCULATION_LOADING_MS = 2000;
+
 type ResultsState = {
   distribution: DistributionResponse | null;
   errorMessage: string;
   isLoading: boolean;
   publisherCount: number;
   rerunPromptVisible: boolean;
+  staleMessage: string;
   vehicles: VehicleInput[];
 };
 
@@ -26,41 +29,120 @@ export function useResultsController() {
     publishers?: string;
     vehicles?: string;
   }>();
+  const initialPublisherCount = parsePositiveInteger(publishers, 1);
+  const initialVehicleCount = parsePositiveInteger(vehicleParam, 1);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const calculationIdRef = useRef(0);
   const [state, setState] = useState<ResultsState>(() =>
-    createInitialResultsState(
-      parsePositiveInteger(publishers, 1),
-      parsePositiveInteger(vehicleParam, 1),
-    ),
+    createInitialResultsState(initialPublisherCount, initialVehicleCount),
+  );
+
+  const scheduleCalculationResult = useCallback(
+    (
+      calculationId: number,
+      publisherCount: number,
+      vehicles: VehicleInput[],
+      rerunPromptVisible: boolean,
+    ) => {
+      const startedAt = Date.now();
+      const nextState = createResultsState(publisherCount, vehicles, rerunPromptVisible);
+      const remainingDelay = Math.max(
+        MIN_CALCULATION_LOADING_MS - (Date.now() - startedAt),
+        0,
+      );
+
+      timeoutRef.current = setTimeout(() => {
+        if (calculationIdRef.current !== calculationId) {
+          return;
+        }
+
+        setState(nextState);
+        timeoutRef.current = null;
+      }, remainingDelay);
+    },
+    [],
+  );
+
+  const calculateDistribution = useCallback(
+    (publisherCount: number, vehicles: VehicleInput[], rerunPromptVisible: boolean) => {
+      const calculationId = calculationIdRef.current + 1;
+      calculationIdRef.current = calculationId;
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      setState(createLoadingResultsState(publisherCount, vehicles, rerunPromptVisible));
+      scheduleCalculationResult(calculationId, publisherCount, vehicles, rerunPromptVisible);
+    },
+    [scheduleCalculationResult],
+  );
+
+  useEffect(() => {
+    const calculationId = calculationIdRef.current + 1;
+    calculationIdRef.current = calculationId;
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    scheduleCalculationResult(
+      calculationId,
+      initialPublisherCount,
+      createDefaultVehicles(initialVehicleCount),
+      false,
+    );
+  }, [scheduleCalculationResult, initialPublisherCount, initialVehicleCount]);
+
+  useEffect(
+    () => () => {
+      calculationIdRef.current += 1;
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    },
+    [],
   );
 
   const updatePublisherCount = (publisherCount: number) => {
     setState((currentState) =>
-      createResultsState(publisherCount, currentState.vehicles, false),
+      markResultsStale({
+        ...currentState,
+        errorMessage: '',
+        publisherCount,
+      }),
     );
   };
 
   const updateVehicleCount = (vehicleCount: number) => {
-    setState((currentState) => {
-      const vehicles = resizeVehicles(currentState.vehicles, vehicleCount);
-      return createResultsState(currentState.publisherCount, vehicles, false);
-    });
+    setState((currentState) =>
+      markResultsStale({
+        ...currentState,
+        errorMessage: '',
+        vehicles: resizeVehicles(currentState.vehicles, vehicleCount),
+      }),
+    );
   };
 
   const updateVehicleCapacity = (vehicleId: string, capacity: number) => {
-    const normalizedCapacity = Math.max(0, capacity);
-    setState((currentState) => ({
-      ...currentState,
-      rerunPromptVisible: true,
-      vehicles: currentState.vehicles.map((vehicle) =>
-        vehicle.id === vehicleId ? { ...vehicle, capacity: normalizedCapacity } : vehicle,
-      ),
-    }));
+    setState((currentState) =>
+      markResultsStale({
+        ...currentState,
+        errorMessage: '',
+        vehicles: currentState.vehicles.map((vehicle) =>
+          vehicle.id === vehicleId ? { ...vehicle, capacity: Math.max(0, capacity) } : vehicle,
+        ),
+      }),
+    );
   };
 
   const recalculateDistribution = () => {
-    setState((currentState) =>
-      createResultsState(currentState.publisherCount, currentState.vehicles, false),
-    );
+    if (!state.rerunPromptVisible) {
+      return;
+    }
+
+    calculateDistribution(state.publisherCount, state.vehicles, false);
   };
 
   const startOver = () => {
@@ -75,6 +157,7 @@ export function useResultsController() {
     recalculateDistribution,
     rerunPromptVisible: state.rerunPromptVisible,
     startOver,
+    staleMessage: state.staleMessage,
     updatePublisherCount,
     updateVehicleCount,
     updateVehicleCapacity,
@@ -87,7 +170,27 @@ function createInitialResultsState(
   publisherCount: number,
   vehicleCount: number,
 ): ResultsState {
-  return createResultsState(publisherCount, createDefaultVehicles(vehicleCount), false);
+  return createLoadingResultsState(
+    publisherCount,
+    createDefaultVehicles(vehicleCount),
+    false,
+  );
+}
+
+function createLoadingResultsState(
+  publisherCount: number,
+  vehicles: VehicleInput[],
+  rerunPromptVisible: boolean,
+): ResultsState {
+  return {
+    distribution: null,
+    errorMessage: '',
+    isLoading: true,
+    publisherCount,
+    rerunPromptVisible,
+    staleMessage: '',
+    vehicles,
+  };
 }
 
 function createResultsState(
@@ -108,6 +211,7 @@ function createResultsState(
       isLoading: false,
       publisherCount,
       rerunPromptVisible,
+      staleMessage: '',
       vehicles,
     };
   } catch (error) {
@@ -118,9 +222,39 @@ function createResultsState(
       isLoading: false,
       publisherCount,
       rerunPromptVisible: false,
+      staleMessage: '',
       vehicles,
     };
   }
+}
+
+function markResultsStale(state: ResultsState): ResultsState {
+  const overCapacityMessage = createOverCapacityMessage(state);
+
+  return {
+    ...state,
+    rerunPromptVisible: true,
+    staleMessage:
+      overCapacityMessage ??
+      'Selections changed - press Recalculate to update this distribution.',
+  };
+}
+
+function createOverCapacityMessage(state: ResultsState) {
+  const assignments = state.distribution?.assignments ?? [];
+
+  for (const vehicle of state.vehicles) {
+    const assignment = assignments.find(
+      (vehicleAssignment) => vehicleAssignment.vehicleId === vehicle.id,
+    );
+    const assignedCount = assignment?.passengerIds.length ?? 0;
+
+    if (assignedCount > vehicle.capacity) {
+      return `${vehicle.label} has ${assignedCount} publishers assigned but only ${vehicle.capacity} seats. Press Recalculate to fix the distribution.`;
+    }
+  }
+
+  return null;
 }
 
 function resizeVehicles(vehicles: VehicleInput[], vehicleCount: number) {

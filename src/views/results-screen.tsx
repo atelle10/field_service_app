@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -57,6 +64,17 @@ export function ResultsScreen({
 
     setActiveCountPicker(null);
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingScreen}>
+          <ActivityIndicator color={colors.mint} size="large" />
+          <Text style={styles.loadingText}>Calculating distribution...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -164,8 +182,6 @@ export function ResultsScreen({
           </Pressable>
         </View>
 
-        {isLoading && <Text style={styles.statusText}>Generating distribution...</Text>}
-
         {!!errorMessage && (
           <View style={styles.errorPanel}>
             <Text style={styles.errorTitle}>Not enough seats</Text>
@@ -200,6 +216,8 @@ export function ResultsScreen({
             );
             const passengerIds = assignment?.passengerIds ?? [];
             const openSeatCount = Math.max(vehicle.capacity - passengerIds.length, 0);
+            const isOverCapacity = passengerIds.length > vehicle.capacity;
+            const overCapacityCount = Math.max(passengerIds.length - vehicle.capacity, 0);
 
             return (
               <View
@@ -207,11 +225,16 @@ export function ResultsScreen({
                 style={[
                   styles.vehicleCard,
                   passengerIds.length > 0 ? styles.vehicleCardInUse : styles.vehicleCardUnused,
+                  isOverCapacity && styles.vehicleCardOverCapacity,
                 ]}>
                 <View style={styles.vehicleHeader}>
                   <View>
                     <Text style={styles.vehicleTitle}>{vehicle.label}</Text>
-                    <Text style={styles.vehicleMeta}>
+                    <Text
+                      style={[
+                        styles.vehicleMeta,
+                        isOverCapacity && styles.vehicleMetaOverCapacity,
+                      ]}>
                       {passengerIds.length}/{vehicle.capacity} seats
                       {assignment?.inUse === false ? ' - unused' : ''}
                     </Text>
@@ -221,23 +244,57 @@ export function ResultsScreen({
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity - 1)}
-                      style={({ pressed }) => [styles.stepperButton, pressed && styles.buttonPressed]}>
-                      <Text style={styles.stepperText}>-</Text>
+                      style={({ pressed }) => [
+                        styles.stepperButton,
+                        isOverCapacity && styles.stepperButtonWarning,
+                        pressed && styles.buttonPressed,
+                      ]}>
+                      <Text style={[styles.stepperText, isOverCapacity && styles.stepperTextWarning]}>
+                        -
+                      </Text>
                     </Pressable>
-                    <Text style={styles.capacityText}>{vehicle.capacity}</Text>
+                    <View style={[styles.capacityBadge, isOverCapacity && styles.capacityBadgeWarning]}>
+                      <Text
+                        style={[
+                          styles.capacityText,
+                          isOverCapacity && styles.capacityTextWarning,
+                        ]}>
+                        {vehicle.capacity}
+                      </Text>
+                    </View>
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity + 1)}
-                      style={({ pressed }) => [styles.stepperButton, pressed && styles.buttonPressed]}>
-                      <Text style={styles.stepperText}>+</Text>
+                      style={({ pressed }) => [
+                        styles.stepperButton,
+                        isOverCapacity && styles.stepperButtonWarning,
+                        pressed && styles.buttonPressed,
+                      ]}>
+                      <Text style={[styles.stepperText, isOverCapacity && styles.stepperTextWarning]}>
+                        +
+                      </Text>
                     </Pressable>
                   </View>
                 </View>
 
+                {isOverCapacity && (
+                  <View style={styles.vehicleWarning}>
+                    <Text style={styles.vehicleWarningText}>
+                      {formatOverCapacityMessage(overCapacityCount)}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.seatGrid}>
                   {passengerIds.map((passengerId) => (
-                    <View key={passengerId} style={styles.occupiedSeat}>
-                      <Text style={styles.occupiedSeatText}>
+                    <View
+                      key={passengerId}
+                      style={[styles.occupiedSeat, isOverCapacity && styles.occupiedSeatWarning]}>
+                      <Text
+                        style={[
+                          styles.occupiedSeatText,
+                          isOverCapacity && styles.occupiedSeatTextWarning,
+                        ]}>
                         {formatPassengerLabel(passengerId)}
                       </Text>
                     </View>
@@ -294,6 +351,11 @@ function SummaryItem({
 
 function formatPassengerLabel(passengerId: string) {
   return passengerId.replace('publisher-', 'Publisher ');
+}
+
+function formatOverCapacityMessage(overCapacityCount: number) {
+  const publisherLabel = overCapacityCount === 1 ? 'publisher' : 'publishers';
+  return `${overCapacityCount} assigned ${publisherLabel} over capacity. Increase seats or press Recalculate.`;
 }
 
 const styles = StyleSheet.create({
@@ -395,7 +457,7 @@ const styles = StyleSheet.create({
   },
   recalculateButtonActive: {
     borderColor: colors.mint,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.surface,
   },
   recalculateButtonDisabled: {
     borderColor: colors.border,
@@ -405,11 +467,19 @@ const styles = StyleSheet.create({
     color: colors.textSubtle,
   },
   recalculateButtonTextActive: {
-    color: colors.background,
+    color: colors.mint,
   },
-  statusText: {
-    color: colors.textMuted,
-    fontSize: 16,
+  loadingScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 18,
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '700',
   },
   errorPanel: {
     gap: 6,
@@ -488,6 +558,11 @@ const styles = StyleSheet.create({
   vehicleCardUnused: {
     borderLeftColor: colors.textSubtle,
   },
+  vehicleCardOverCapacity: {
+    backgroundColor: colors.dangerBackground,
+    borderColor: colors.dangerText,
+    borderLeftColor: colors.dangerText,
+  },
   vehicleHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -504,6 +579,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 2,
   },
+  vehicleMetaOverCapacity: {
+    color: colors.dangerText,
+    fontWeight: '700',
+  },
+  vehicleWarning: {
+    borderWidth: 1,
+    borderColor: colors.dangerText,
+    borderRadius: radii.small,
+    backgroundColor: colors.surfaceStrong,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  vehicleWarningText: {
+    color: colors.dangerText,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
   capacityControls: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -519,18 +612,37 @@ const styles = StyleSheet.create({
     borderRadius: radii.small,
     backgroundColor: colors.background,
   },
+  stepperButtonWarning: {
+    borderColor: colors.dangerText,
+  },
   stepperText: {
     color: colors.mint,
     fontSize: 22,
     fontWeight: '700',
     lineHeight: 24,
   },
+  stepperTextWarning: {
+    color: colors.dangerText,
+  },
+  capacityBadge: {
+    minWidth: 34,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+    paddingHorizontal: 8,
+  },
+  capacityBadgeWarning: {
+    backgroundColor: colors.dangerText,
+  },
   capacityText: {
-    minWidth: 24,
     color: colors.text,
     fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  capacityTextWarning: {
+    color: colors.background,
   },
   seatGrid: {
     flexDirection: 'row',
@@ -546,10 +658,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
     paddingHorizontal: 12,
   },
+  occupiedSeatWarning: {
+    backgroundColor: colors.dangerText,
+  },
   occupiedSeatText: {
     color: colors.text,
     fontSize: 14,
     fontWeight: '700',
+  },
+  occupiedSeatTextWarning: {
+    color: colors.background,
   },
   openSeat: {
     minWidth: 86,
