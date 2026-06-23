@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@react-native-picker/picker": "2.11.4",
     "expo": "~56.0.12",
     "expo-constants": "~56.0.18",
     "expo-linking": "~56.0.14",

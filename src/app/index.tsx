@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +9,7 @@ export default function StartScreen() {
         <Text style={styles.title}>Field Service Assistant</Text>
         <Pressable
           accessibilityRole="button"
+          onPress={() => router.push('/select')}
           style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}>
           <Text style={styles.startButtonText}>Start</Text>
         </Pressable>
