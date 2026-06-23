@@ -1,8 +1,16 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { DistributionResponse, VehicleInput } from '@/models/group-assignment';
+import {
+  publisherCountOptions,
+  type DistributionResponse,
+  type VehicleInput,
+  vehicleCountOptions,
+} from '@/models/group-assignment';
 import { colors, radii } from '@/styles/theme';
+
+type ActiveCountPicker = 'publishers' | 'vehicles' | null;
 
 type ResultsScreenProps = {
   distribution: DistributionResponse | null;
@@ -11,9 +19,12 @@ type ResultsScreenProps = {
   publisherCount: number;
   recalculateDistribution: () => void;
   rerunPromptVisible: boolean;
+  startOver: () => void;
+  updatePublisherCount: (publisherCount: number) => void;
+  updateVehicleCount: (vehicleCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
+  vehicleCount: number;
   vehicles: VehicleInput[];
-  goBack: () => void;
 };
 
 export function ResultsScreen({
@@ -23,38 +34,135 @@ export function ResultsScreen({
   publisherCount,
   recalculateDistribution,
   rerunPromptVisible,
+  startOver,
+  updatePublisherCount,
+  updateVehicleCount,
   updateVehicleCapacity,
+  vehicleCount,
   vehicles,
-  goBack,
 }: ResultsScreenProps) {
+  const [activeCountPicker, setActiveCountPicker] = useState<ActiveCountPicker>(null);
+  const activeCountOptions =
+    activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
+  const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
+
+  const selectCount = (count: number) => {
+    if (activeCountPicker === 'publishers') {
+      updatePublisherCount(count);
+    }
+
+    if (activeCountPicker === 'vehicles') {
+      updateVehicleCount(count);
+    }
+
+    setActiveCountPicker(null);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={goBack}
-        style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}>
-        <Text style={styles.backButtonText}>Back</Text>
-      </Pressable>
-
       <ScrollView
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Suggested Distribution</Text>
-        <Text style={styles.subtitle}>
-          {publisherCount} publishers - {vehicles.length} vehicles - default 5 seats
-        </Text>
-
-        {rerunPromptVisible && (
-          <View style={styles.banner}>
-            <Text style={styles.bannerText}>Seat counts changed - recalculate distribution?</Text>
+        showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => setActiveCountPicker(null)}>
+        <View style={styles.countSelector}>
+          <View style={styles.countControls}>
             <Pressable
               accessibilityRole="button"
-              onPress={recalculateDistribution}
-              style={({ pressed }) => [styles.bannerButton, pressed && styles.buttonPressed]}>
-              <Text style={styles.bannerButtonText}>Recalculate</Text>
+              onPress={() =>
+                setActiveCountPicker((currentPicker) =>
+                  currentPicker === 'publishers' ? null : 'publishers',
+                )
+              }
+              style={({ pressed }) => [
+                styles.countButton,
+                activeCountPicker === 'publishers' && styles.countButtonActive,
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text style={styles.countButtonText}>Publishers: {publisherCount}</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                setActiveCountPicker((currentPicker) =>
+                  currentPicker === 'vehicles' ? null : 'vehicles',
+                )
+              }
+              style={({ pressed }) => [
+                styles.countButton,
+                activeCountPicker === 'vehicles' && styles.countButtonActive,
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text style={styles.countButtonText}>Vehicles: {vehicleCount}</Text>
             </Pressable>
           </View>
-        )}
+
+          {activeCountPicker && (
+            <View
+              style={[
+                styles.dropdown,
+                activeCountPicker === 'publishers' ? styles.dropdownLeft : styles.dropdownRight,
+              ]}>
+              <ScrollView
+                nestedScrollEnabled
+                style={styles.dropdownScroll}
+                contentContainerStyle={styles.dropdownContent}
+                showsVerticalScrollIndicator={false}>
+                {activeCountOptions.map((count) => {
+                  const isSelected = count === activeCount;
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      key={count}
+                      onPress={() => selectCount(count)}
+                      style={({ pressed }) => [
+                        styles.dropdownOption,
+                        isSelected && styles.dropdownOptionSelected,
+                        pressed && styles.buttonPressed,
+                      ]}>
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          isSelected && styles.dropdownOptionTextSelected,
+                        ]}>
+                        {count}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.actionBar}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={startOver}
+            style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}>
+            <Text style={styles.actionButtonText}>Start Over</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={!rerunPromptVisible}
+            onPress={recalculateDistribution}
+            style={({ pressed }) => [
+              styles.actionButton,
+              rerunPromptVisible ? styles.recalculateButtonActive : styles.recalculateButtonDisabled,
+              pressed && styles.buttonPressed,
+            ]}>
+            <Text
+              style={[
+                styles.actionButtonText,
+                rerunPromptVisible && styles.recalculateButtonTextActive,
+                !rerunPromptVisible && styles.recalculateButtonTextDisabled,
+              ]}>
+              Recalculate
+            </Text>
+          </Pressable>
+        </View>
 
         {isLoading && <Text style={styles.statusText}>Generating distribution...</Text>}
 
@@ -67,9 +175,21 @@ export function ResultsScreen({
 
         {distribution?.summary && (
           <View style={styles.summaryRow}>
-            <SummaryItem label="Used" value={String(distribution.summary.vehiclesUsed)} />
-            <SummaryItem label="Seats" value={String(distribution.summary.totalCapacity)} />
-            <SummaryItem label="Open" value={String(distribution.summary.unusedSeats)} />
+            <SummaryItem
+              label="Used"
+              value={String(distribution.summary.vehiclesUsed)}
+              tone="forest"
+            />
+            <SummaryItem
+              label="Seats"
+              value={String(distribution.summary.totalCapacity)}
+              tone="purple"
+            />
+            <SummaryItem
+              label="Open"
+              value={String(distribution.summary.unusedSeats)}
+              tone="mint"
+            />
           </View>
         )}
 
@@ -79,9 +199,15 @@ export function ResultsScreen({
               (vehicleAssignment) => vehicleAssignment.vehicleId === vehicle.id,
             );
             const passengerIds = assignment?.passengerIds ?? [];
+            const openSeatCount = Math.max(vehicle.capacity - passengerIds.length, 0);
 
             return (
-              <View key={vehicle.id} style={styles.vehicleCard}>
+              <View
+                key={vehicle.id}
+                style={[
+                  styles.vehicleCard,
+                  passengerIds.length > 0 ? styles.vehicleCardInUse : styles.vehicleCardUnused,
+                ]}>
                 <View style={styles.vehicleHeader}>
                   <View>
                     <Text style={styles.vehicleTitle}>{vehicle.label}</Text>
@@ -108,9 +234,25 @@ export function ResultsScreen({
                   </View>
                 </View>
 
-                <Text style={styles.passengerList}>
-                  {passengerIds.length > 0 ? passengerIds.join(', ') : 'No publishers assigned'}
-                </Text>
+                <View style={styles.seatGrid}>
+                  {passengerIds.map((passengerId) => (
+                    <View key={passengerId} style={styles.occupiedSeat}>
+                      <Text style={styles.occupiedSeatText}>
+                        {formatPassengerLabel(passengerId)}
+                      </Text>
+                    </View>
+                  ))}
+
+                  {Array.from({ length: openSeatCount }, (_, index) => (
+                    <View key={`${vehicle.id}-open-${index}`} style={styles.openSeat}>
+                      <Text style={styles.openSeatText}>Open</Text>
+                    </View>
+                  ))}
+
+                  {passengerIds.length === 0 && openSeatCount === 0 && (
+                    <Text style={styles.emptySeatText}>No seats available</Text>
+                  )}
+                </View>
               </View>
             );
           })}
@@ -120,13 +262,38 @@ export function ResultsScreen({
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function SummaryItem({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'forest' | 'mint' | 'purple';
+}) {
+  const toneStyle =
+    tone === 'forest'
+      ? styles.summaryItemForest
+      : tone === 'purple'
+        ? styles.summaryItemPurple
+        : styles.summaryItemMint;
+  const valueStyle =
+    tone === 'forest'
+      ? styles.summaryValueForest
+      : tone === 'purple'
+        ? styles.summaryValuePurple
+        : styles.summaryValueMint;
+
   return (
-    <View style={styles.summaryItem}>
-      <Text style={styles.summaryValue}>{value}</Text>
+    <View style={[styles.summaryItem, toneStyle]}>
+      <Text style={[styles.summaryValue, valueStyle]}>{value}</Text>
       <Text style={styles.summaryLabel}>{label}</Text>
     </View>
   );
+}
+
+function formatPassengerLabel(passengerId: string) {
+  return passengerId.replace('publisher-', 'Publisher ');
 }
 
 const styles = StyleSheet.create({
@@ -134,62 +301,111 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  backButton: {
-    position: 'absolute',
-    top: 64,
-    left: 24,
-    zIndex: 1,
-    minHeight: 44,
-    justifyContent: 'center',
-    borderRadius: radii.small,
-    paddingHorizontal: 12,
-  },
-  backButtonText: {
-    color: colors.mint,
-    fontSize: 17,
-    fontWeight: '700',
-  },
   content: {
     paddingHorizontal: 24,
     paddingBottom: 36,
-    paddingTop: 128,
+    paddingTop: 28,
     gap: 18,
   },
-  title: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: '700',
-    lineHeight: 38,
+  countSelector: {
+    gap: 10,
   },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 22,
+  countControls: {
+    flexDirection: 'row',
+    gap: 10,
   },
-  banner: {
-    gap: 12,
-    borderRadius: radii.medium,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.mint,
-    backgroundColor: colors.surface,
-    padding: 16,
-  },
-  bannerText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  bannerButton: {
-    alignSelf: 'flex-start',
+  countButton: {
+    flex: 1,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radii.small,
-    backgroundColor: colors.mint,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
   },
-  bannerButtonText: {
-    color: colors.background,
+  countButtonActive: {
+    borderColor: colors.mint,
+    backgroundColor: colors.deepForest,
+  },
+  countButtonText: {
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
+  },
+  dropdown: {
+    width: '48%',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.large,
+    backgroundColor: colors.surfaceStrong,
+  },
+  dropdownLeft: {
+    alignSelf: 'flex-start',
+  },
+  dropdownRight: {
+    alignSelf: 'flex-end',
+  },
+  dropdownScroll: {
+    maxHeight: 220,
+  },
+  dropdownContent: {
+    padding: 6,
+  },
+  dropdownOption: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+  },
+  dropdownOptionSelected: {
+    backgroundColor: colors.mint,
+  },
+  dropdownOptionText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  dropdownOptionTextSelected: {
+    color: colors.background,
+  },
+  actionBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.deepForest,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  actionButtonText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  recalculateButtonActive: {
+    borderColor: colors.mint,
+    backgroundColor: colors.mint,
+  },
+  recalculateButtonDisabled: {
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  recalculateButtonTextDisabled: {
+    color: colors.textSubtle,
+  },
+  recalculateButtonTextActive: {
+    color: colors.background,
   },
   statusText: {
     color: colors.textMuted,
@@ -217,14 +433,36 @@ const styles = StyleSheet.create({
   },
   summaryItem: {
     flex: 1,
+    borderWidth: 1,
     borderRadius: radii.medium,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     padding: 14,
   },
+  summaryItemForest: {
+    borderTopWidth: 4,
+    borderTopColor: colors.deepForest,
+  },
+  summaryItemPurple: {
+    borderTopWidth: 4,
+    borderTopColor: colors.purple,
+  },
+  summaryItemMint: {
+    borderTopWidth: 4,
+    borderTopColor: colors.mint,
+  },
   summaryValue: {
-    color: colors.text,
     fontSize: 22,
     fontWeight: '700',
+  },
+  summaryValueForest: {
+    color: colors.mint,
+  },
+  summaryValuePurple: {
+    color: colors.text,
+  },
+  summaryValueMint: {
+    color: colors.mint,
   },
   summaryLabel: {
     color: colors.textMuted,
@@ -237,9 +475,18 @@ const styles = StyleSheet.create({
   },
   vehicleCard: {
     gap: 14,
+    borderLeftWidth: 4,
+    borderWidth: 1,
     borderRadius: radii.medium,
+    borderColor: colors.border,
     backgroundColor: colors.surfaceStrong,
     padding: 16,
+  },
+  vehicleCardInUse: {
+    borderLeftColor: colors.deepForest,
+  },
+  vehicleCardUnused: {
+    borderLeftColor: colors.textSubtle,
   },
   vehicleHeader: {
     alignItems: 'center',
@@ -267,8 +514,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 36,
     height: 36,
+    borderWidth: 1,
+    borderColor: colors.deepForest,
     borderRadius: radii.small,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
   stepperText: {
     color: colors.mint,
@@ -283,10 +532,43 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  passengerList: {
-    color: colors.textMuted,
+  seatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  occupiedSeat: {
+    minWidth: 102,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+    backgroundColor: colors.purple,
+    paddingHorizontal: 12,
+  },
+  occupiedSeatText: {
+    color: colors.text,
     fontSize: 14,
-    lineHeight: 20,
+    fontWeight: '700',
+  },
+  openSeat: {
+    minWidth: 86,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+    backgroundColor: colors.mint,
+    paddingHorizontal: 12,
+  },
+  openSeatText: {
+    color: colors.background,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  emptySeatText: {
+    color: colors.textSubtle,
+    fontSize: 14,
+    fontWeight: '600',
   },
   buttonPressed: {
     opacity: 0.82,

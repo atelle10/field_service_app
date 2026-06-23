@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import {
   DistributionStrategy,
@@ -10,13 +10,13 @@ import {
   createDistributionSuggestion,
   createDefaultVehicles,
   createPlaceholderPassengers,
-  requestDistributionSuggestion,
 } from '@/services/group-assignment-service';
 
 type ResultsState = {
   distribution: DistributionResponse | null;
   errorMessage: string;
   isLoading: boolean;
+  publisherCount: number;
   rerunPromptVisible: boolean;
   vehicles: VehicleInput[];
 };
@@ -26,46 +26,24 @@ export function useResultsController() {
     publishers?: string;
     vehicles?: string;
   }>();
-  const publisherCount = parsePositiveInteger(publishers, 1);
-  const vehicleCount = parsePositiveInteger(vehicleParam, 1);
-  const passengers = useMemo(
-    () => createPlaceholderPassengers(publisherCount),
-    [publisherCount],
-  );
   const [state, setState] = useState<ResultsState>(() =>
-    createInitialResultsState(publisherCount, vehicleCount),
+    createInitialResultsState(
+      parsePositiveInteger(publishers, 1),
+      parsePositiveInteger(vehicleParam, 1),
+    ),
   );
 
-  const generateDistribution = async (nextVehicles: VehicleInput[]) => {
-    setState((currentState) => ({
-      ...currentState,
-      errorMessage: '',
-      isLoading: true,
-    }));
+  const updatePublisherCount = (publisherCount: number) => {
+    setState((currentState) =>
+      createResultsState(publisherCount, currentState.vehicles, false),
+    );
+  };
 
-    try {
-      const suggestion = await requestDistributionSuggestion({
-        passengers,
-        vehicles: nextVehicles,
-        strategy: DistributionStrategy.MinimizeCars,
-      });
-
-      setState((currentState) => ({
-        ...currentState,
-        distribution: suggestion,
-        errorMessage: '',
-        isLoading: false,
-        rerunPromptVisible: false,
-      }));
-    } catch (error) {
-      setState((currentState) => ({
-        ...currentState,
-        distribution: null,
-        errorMessage:
-          error instanceof Error ? error.message : 'Unable to generate a distribution.',
-        isLoading: false,
-      }));
-    }
+  const updateVehicleCount = (vehicleCount: number) => {
+    setState((currentState) => {
+      const vehicles = resizeVehicles(currentState.vehicles, vehicleCount);
+      return createResultsState(currentState.publisherCount, vehicles, false);
+    });
   };
 
   const updateVehicleCapacity = (vehicleId: string, capacity: number) => {
@@ -80,28 +58,28 @@ export function useResultsController() {
   };
 
   const recalculateDistribution = () => {
-    void generateDistribution(state.vehicles);
+    setState((currentState) =>
+      createResultsState(currentState.publisherCount, currentState.vehicles, false),
+    );
   };
 
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-
-    router.replace('/vehicles');
+  const startOver = () => {
+    router.replace('/select');
   };
 
   return {
     distribution: state.distribution,
     errorMessage: state.errorMessage,
     isLoading: state.isLoading,
-    publisherCount,
+    publisherCount: state.publisherCount,
     recalculateDistribution,
     rerunPromptVisible: state.rerunPromptVisible,
+    startOver,
+    updatePublisherCount,
+    updateVehicleCount,
     updateVehicleCapacity,
+    vehicleCount: state.vehicles.length,
     vehicles: state.vehicles,
-    goBack,
   };
 }
 
@@ -109,8 +87,14 @@ function createInitialResultsState(
   publisherCount: number,
   vehicleCount: number,
 ): ResultsState {
-  const vehicles = createDefaultVehicles(vehicleCount);
+  return createResultsState(publisherCount, createDefaultVehicles(vehicleCount), false);
+}
 
+function createResultsState(
+  publisherCount: number,
+  vehicles: VehicleInput[],
+  rerunPromptVisible: boolean,
+): ResultsState {
   try {
     const distribution = createDistributionSuggestion({
       passengers: createPlaceholderPassengers(publisherCount),
@@ -122,7 +106,8 @@ function createInitialResultsState(
       distribution,
       errorMessage: '',
       isLoading: false,
-      rerunPromptVisible: false,
+      publisherCount,
+      rerunPromptVisible,
       vehicles,
     };
   } catch (error) {
@@ -131,10 +116,20 @@ function createInitialResultsState(
       errorMessage:
         error instanceof Error ? error.message : 'Unable to generate a distribution.',
       isLoading: false,
+      publisherCount,
       rerunPromptVisible: false,
       vehicles,
     };
   }
+}
+
+function resizeVehicles(vehicles: VehicleInput[], vehicleCount: number) {
+  if (vehicleCount <= vehicles.length) {
+    return vehicles.slice(0, vehicleCount);
+  }
+
+  const additionalVehicles = createDefaultVehicles(vehicleCount).slice(vehicles.length);
+  return [...vehicles, ...additionalVehicles];
 }
 
 function parsePositiveInteger(value: string | undefined, fallback: number) {
