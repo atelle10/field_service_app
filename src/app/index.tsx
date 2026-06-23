@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors, radii } from '@/styles/theme';
+
 export default function StartScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -21,7 +23,7 @@ export default function StartScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -32,7 +34,7 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-    color: '#111827',
+    color: colors.text,
     fontSize: 34,
     fontWeight: '700',
     lineHeight: 40,
@@ -42,15 +44,15 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#1D4ED8',
+    borderRadius: radii.small,
+    backgroundColor: colors.mint,
     paddingHorizontal: 24,
   },
   startButtonPressed: {
     opacity: 0.82,
   },
   startButtonText: {
-    color: '#FFFFFF',
+    color: colors.background,
     fontSize: 17,
     fontWeight: '700',
   },

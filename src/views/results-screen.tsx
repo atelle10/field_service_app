@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { DistributionResponse, VehicleInput } from '@/models/group-assignment';
+import { colors, radii } from '@/styles/theme';
 
 type ResultsScreenProps = {
   distribution: DistributionResponse | null;
@@ -45,7 +46,7 @@ export function ResultsScreen({
 
         {rerunPromptVisible && (
           <View style={styles.banner}>
-            <Text style={styles.bannerText}>Seat counts changed — recalculate distribution?</Text>
+            <Text style={styles.bannerText}>Seat counts changed - recalculate distribution?</Text>
             <Pressable
               accessibilityRole="button"
               onPress={recalculateDistribution}
@@ -131,7 +132,7 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
   },
   backButton: {
     position: 'absolute',
@@ -140,11 +141,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
     minHeight: 44,
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: radii.small,
     paddingHorizontal: 12,
   },
   backButtonText: {
-    color: '#1D4ED8',
+    color: colors.mint,
     fontSize: 17,
     fontWeight: '700',
   },
@@ -155,56 +156,58 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   title: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 32,
     fontWeight: '700',
     lineHeight: 38,
   },
   subtitle: {
-    color: '#4B5563',
+    color: colors.textMuted,
     fontSize: 16,
     lineHeight: 22,
   },
   banner: {
     gap: 12,
-    borderRadius: 8,
-    backgroundColor: '#DBEAFE',
+    borderRadius: radii.medium,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.mint,
+    backgroundColor: colors.surface,
     padding: 16,
   },
   bannerText: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
   bannerButton: {
     alignSelf: 'flex-start',
-    borderRadius: 8,
-    backgroundColor: '#1D4ED8',
+    borderRadius: radii.small,
+    backgroundColor: colors.mint,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   bannerButtonText: {
-    color: '#FFFFFF',
+    color: colors.background,
     fontSize: 15,
     fontWeight: '700',
   },
   statusText: {
-    color: '#4B5563',
+    color: colors.textMuted,
     fontSize: 16,
   },
   errorPanel: {
     gap: 6,
-    borderRadius: 8,
-    backgroundColor: '#FEE2E2',
+    borderRadius: radii.medium,
+    backgroundColor: colors.dangerBackground,
     padding: 16,
   },
   errorTitle: {
-    color: '#991B1B',
+    color: colors.dangerText,
     fontSize: 18,
     fontWeight: '700',
   },
   errorText: {
-    color: '#7F1D1D',
+    color: colors.dangerText,
     fontSize: 15,
     lineHeight: 21,
   },
@@ -214,17 +217,17 @@ const styles = StyleSheet.create({
   },
   summaryItem: {
     flex: 1,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderRadius: radii.medium,
+    backgroundColor: colors.surface,
     padding: 14,
   },
   summaryValue: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 22,
     fontWeight: '700',
   },
   summaryLabel: {
-    color: '#6B7280',
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
@@ -234,8 +237,8 @@ const styles = StyleSheet.create({
   },
   vehicleCard: {
     gap: 14,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderRadius: radii.medium,
+    backgroundColor: colors.surfaceStrong,
     padding: 16,
   },
   vehicleHeader: {
@@ -245,12 +248,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   vehicleTitle: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 19,
     fontWeight: '700',
   },
   vehicleMeta: {
-    color: '#6B7280',
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 2,
   },
@@ -264,24 +267,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 36,
     height: 36,
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
   },
   stepperText: {
-    color: '#111827',
+    color: colors.mint,
     fontSize: 22,
     fontWeight: '700',
     lineHeight: 24,
   },
   capacityText: {
     minWidth: 24,
-    color: '#111827',
+    color: colors.text,
     fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
   },
   passengerList: {
-    color: '#4B5563',
+    color: colors.textMuted,
     fontSize: 14,
     lineHeight: 20,
   },

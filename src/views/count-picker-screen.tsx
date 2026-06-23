@@ -3,6 +3,8 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors, radii } from '@/styles/theme';
+
 type CountPickerScreenProps = {
   prompt: string;
   selectedCount: number;
@@ -65,7 +67,7 @@ export function CountPickerScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
   },
   backButton: {
     position: 'absolute',
@@ -74,11 +76,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
     minHeight: 44,
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: radii.small,
     paddingHorizontal: 12,
   },
   backButtonText: {
-    color: '#1D4ED8',
+    color: colors.mint,
     fontSize: 17,
     fontWeight: '700',
   },
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
   },
   prompt: {
     maxWidth: 340,
-    color: '#111827',
+    color: colors.text,
     fontSize: 24,
     fontWeight: '700',
     lineHeight: 32,
@@ -102,13 +104,16 @@ const styles = StyleSheet.create({
     maxWidth: 280,
     height: 190,
     justifyContent: 'center',
+    borderRadius: radii.large,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 8,
   },
   picker: {
     width: '100%',
     height: 190,
   },
   pickerItem: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 28,
     fontWeight: '600',
   },
@@ -117,12 +122,12 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#1D4ED8',
+    borderRadius: radii.small,
+    backgroundColor: colors.mint,
     paddingHorizontal: 24,
   },
   confirmButtonText: {
-    color: '#FFFFFF',
+    color: colors.background,
     fontSize: 17,
     fontWeight: '700',
   },
