@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Info, SlidersHorizontal, StepBack, UsersRound } from 'lucide-react-native';
 import {
   Animated,
   Easing,
@@ -12,7 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radii } from '@/styles/theme';
 
-const menuOptions = ['Publishers', 'Options', 'Info'] as const;
+const menuOptions = [
+  { Icon: UsersRound, label: 'Publishers' },
+  { Icon: SlidersHorizontal, label: 'Options' },
+  { Icon: Info, label: 'Info' },
+] as const;
 const headerHeight = 44;
 const headerTopPadding = 28;
 const menuTextSize = 13;
@@ -74,18 +79,19 @@ export function AppMenuDrawer({ onClose, onSelectOption }: AppMenuDrawerProps) {
           accessibilityRole="button"
           onPress={() => closeDrawer()}
           style={({ pressed }) => [styles.closeButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.closeButtonText}>x</Text>
+          <StepBack color={colors.text} size={16} strokeWidth={2.4} />
         </Pressable>
       </View>
 
       <View style={styles.optionList}>
-        {menuOptions.map((option) => (
+        {menuOptions.map(({ Icon, label }) => (
           <Pressable
             accessibilityRole="button"
-            key={option}
+            key={label}
             onPress={() => closeDrawer(onSelectOption)}
             style={({ pressed }) => [styles.option, pressed && styles.buttonPressed]}>
-            <Text style={styles.optionText}>{option}</Text>
+            <Icon color={colors.text} size={16} strokeWidth={2.2} />
+            <Text style={styles.optionText}>{label}</Text>
           </Pressable>
         ))}
       </View>
@@ -126,18 +132,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.small,
     backgroundColor: colors.surface,
   },
-  closeButtonText: {
-    color: colors.text,
-    fontSize: menuTextSize,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
   optionList: {
     gap: 12,
   },
   option: {
     minHeight: 44,
-    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-start',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.small,

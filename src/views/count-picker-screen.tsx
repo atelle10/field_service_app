@@ -1,5 +1,6 @@
 import { Picker } from '@react-native-picker/picker';
 import { router } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,10 +33,11 @@ export function CountPickerScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <Pressable
+        accessibilityLabel="Go back"
         accessibilityRole="button"
         onPress={goBack}
         style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}>
-        <Text style={styles.backButtonText}>Back</Text>
+        <ChevronLeft color={colors.mint} size={28} strokeWidth={2.5} />
       </Pressable>
 
       <View style={styles.content}>
@@ -74,15 +76,11 @@ const styles = StyleSheet.create({
     top: 64,
     left: 24,
     zIndex: 1,
+    width: 44,
     minHeight: 44,
+    alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.small,
-    paddingHorizontal: 12,
-  },
-  backButtonText: {
-    color: colors.mint,
-    fontSize: 17,
-    fontWeight: '700',
   },
   content: {
     flex: 1,

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Menu, Pencil, RefreshCcw } from 'lucide-react-native';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -51,10 +53,42 @@ export function ResultsScreen({
 }: ResultsScreenProps) {
   const [activeCountPicker, setActiveCountPicker] = useState<ActiveCountPicker>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [recalculatePulse] = useState(() => new Animated.Value(1));
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
   const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
+  const recalculateIconColor = rerunPromptVisible ? colors.mint : colors.textSubtle;
+
+  useEffect(() => {
+    if (!rerunPromptVisible) {
+      recalculatePulse.stopAnimation();
+      recalculatePulse.setValue(1);
+      return;
+    }
+
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(recalculatePulse, {
+          toValue: 1.04,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(recalculatePulse, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    pulseAnimation.start();
+
+    return () => {
+      pulseAnimation.stop();
+      recalculatePulse.setValue(1);
+    };
+  }, [recalculatePulse, rerunPromptVisible]);
 
   const closeCountPicker = () => {
     setActiveCountPicker(null);
@@ -130,9 +164,7 @@ export function ResultsScreen({
                   setMenuOpen((currentValue) => !currentValue);
                 }}
                 style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}>
-                <View style={styles.menuLine} />
-                <View style={styles.menuLine} />
-                <View style={styles.menuLine} />
+                <Menu color={colors.text} size={22} strokeWidth={2.5} />
               </Pressable>
 
               <View style={styles.countControls}>
@@ -197,24 +229,28 @@ export function ResultsScreen({
             <Text style={styles.actionButtonText}>Start Over</Text>
           </Pressable>
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={!rerunPromptVisible}
-            onPress={recalculateDistribution}
-            style={({ pressed }) => [
-              styles.actionButton,
-              rerunPromptVisible ? styles.recalculateButtonActive : styles.recalculateButtonDisabled,
-              pressed && styles.buttonPressed,
-            ]}>
-            <Text
-              style={[
-                styles.actionButtonText,
-                rerunPromptVisible && styles.recalculateButtonTextActive,
-                !rerunPromptVisible && styles.recalculateButtonTextDisabled,
+          <Animated.View style={{ transform: [{ scale: recalculatePulse }] }}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={!rerunPromptVisible}
+              onPress={recalculateDistribution}
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.actionButtonWithIcon,
+                rerunPromptVisible ? styles.recalculateButtonActive : styles.recalculateButtonDisabled,
+                pressed && styles.buttonPressed,
               ]}>
-              Recalculate
-            </Text>
-          </Pressable>
+              <RefreshCcw color={recalculateIconColor} size={16} strokeWidth={2.5} />
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  rerunPromptVisible && styles.recalculateButtonTextActive,
+                  !rerunPromptVisible && styles.recalculateButtonTextDisabled,
+                ]}>
+                Recalculate
+              </Text>
+            </Pressable>
+          </Animated.View>
           </View>
 
         {!!errorMessage && (
@@ -276,7 +312,10 @@ export function ResultsScreen({
                 ]}>
                 <View style={styles.vehicleHeader}>
                   <View>
-                    <Text style={styles.vehicleTitle}>{vehicle.label}</Text>
+                    <View style={styles.vehicleTitleRow}>
+                      <Text style={styles.vehicleTitle}>{vehicle.label}</Text>
+                      <Pencil color={colors.textMuted} size={16} strokeWidth={2.3} />
+                    </View>
                     <Text
                       style={[
                         styles.vehicleMeta,
@@ -487,17 +526,10 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.small,
     backgroundColor: colors.surface,
-  },
-  menuLine: {
-    width: 18,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: colors.text,
   },
   countControls: {
     flex: 1,
@@ -587,6 +619,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.deepForest,
     paddingHorizontal: 14,
     paddingVertical: 9,
+  },
+  actionButtonWithIcon: {
+    flexDirection: 'row',
+    gap: 8,
   },
   actionButtonText: {
     color: colors.text,
@@ -731,6 +767,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  vehicleTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   vehicleTitle: {
     color: colors.text,
