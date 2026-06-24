@@ -49,6 +49,7 @@ export function ResultsScreen({
   vehicles,
 }: ResultsScreenProps) {
   const [activeCountPicker, setActiveCountPicker] = useState<ActiveCountPicker>(null);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
   const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
@@ -190,22 +191,34 @@ export function ResultsScreen({
         )}
 
         {distribution?.summary && (
-          <View style={styles.summaryRow}>
-            <SummaryItem
-              label="Used"
-              value={String(distribution.summary.vehiclesUsed)}
-              tone="forest"
-            />
-            <SummaryItem
-              label="Seats"
-              value={String(distribution.summary.totalCapacity)}
-              tone="purple"
-            />
-            <SummaryItem
-              label="Open"
-              value={String(distribution.summary.unusedSeats)}
-              tone="mint"
-            />
+          <View style={styles.summaryMenu}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setSummaryExpanded((currentValue) => !currentValue)}
+              style={({ pressed }) => [styles.summaryToggle, pressed && styles.buttonPressed]}>
+              <Text style={styles.summaryToggleText}>Distribution Summary</Text>
+              <Text style={styles.summaryToggleIcon}>{summaryExpanded ? '-' : '+'}</Text>
+            </Pressable>
+
+            {summaryExpanded && (
+              <View style={styles.summaryRow}>
+                <SummaryItem
+                  label="Vehicles Used"
+                  value={String(distribution.summary.vehiclesUsed)}
+                  tone="forest"
+                />
+                <SummaryItem
+                  label="Total Seats"
+                  value={String(distribution.summary.totalCapacity)}
+                  tone="purple"
+                />
+                <SummaryItem
+                  label="Open"
+                  value={String(distribution.summary.unusedSeats)}
+                  tone="mint"
+                />
+              </View>
+            )}
           </View>
         )}
 
@@ -497,6 +510,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
+  summaryMenu: {
+    gap: 10,
+  },
+  summaryToggle: {
+    minHeight: 46,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+  },
+  summaryToggleText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  summaryToggleIcon: {
+    color: colors.mint,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
   summaryRow: {
     flexDirection: 'row',
     gap: 10,
@@ -536,7 +574,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
   },
