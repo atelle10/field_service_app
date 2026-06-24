@@ -16,6 +16,7 @@ import {
   vehicleCountOptions,
 } from '@/models/group-assignment';
 import { colors, radii } from '@/styles/theme';
+import { AppMenuDrawer } from '@/views/app-menu-drawer';
 
 type ActiveCountPicker = 'publishers' | 'vehicles' | null;
 
@@ -49,10 +50,29 @@ export function ResultsScreen({
   vehicles,
 }: ResultsScreenProps) {
   const [activeCountPicker, setActiveCountPicker] = useState<ActiveCountPicker>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
   const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
+
+  const closeCountPicker = () => {
+    setActiveCountPicker(null);
+  };
+
+  const togglePublisherPicker = () => {
+    setMenuOpen(false);
+    setActiveCountPicker((currentPicker) => {
+      return currentPicker === 'publishers' ? null : 'publishers';
+    });
+  };
+
+  const toggleVehiclePicker = () => {
+    setMenuOpen(false);
+    setActiveCountPicker((currentPicker) => {
+      return currentPicker === 'vehicles' ? null : 'vehicles';
+    });
+  };
 
   const selectCount = (count: number) => {
     if (activeCountPicker === 'publishers') {
@@ -63,7 +83,7 @@ export function ResultsScreen({
       updateVehicleCount(count);
     }
 
-    setActiveCountPicker(null);
+    closeCountPicker();
   };
 
   if (isLoading) {
@@ -79,83 +99,97 @@ export function ResultsScreen({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        onScrollBeginDrag={() => setActiveCountPicker(null)}>
-        <View style={styles.countSelector}>
-          <View style={styles.countControls}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                setActiveCountPicker((currentPicker) =>
-                  currentPicker === 'publishers' ? null : 'publishers',
-                )
-              }
-              style={({ pressed }) => [
-                styles.countButton,
-                activeCountPicker === 'publishers' && styles.countButtonActive,
-                pressed && styles.buttonPressed,
-              ]}>
-              <Text style={styles.countButtonText}>Publishers: {publisherCount}</Text>
-            </Pressable>
+      {menuOpen && (
+        <AppMenuDrawer
+          onClose={() => setMenuOpen(false)}
+          onSelectOption={() => undefined}
+        />
+      )}
 
+      <View style={styles.screenPanel}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={closeCountPicker}>
+          {activeCountPicker && (
             <Pressable
+              accessibilityLabel="Close count picker"
               accessibilityRole="button"
-              onPress={() =>
-                setActiveCountPicker((currentPicker) =>
-                  currentPicker === 'vehicles' ? null : 'vehicles',
-                )
-              }
-              style={({ pressed }) => [
-                styles.countButton,
-                activeCountPicker === 'vehicles' && styles.countButtonActive,
-                pressed && styles.buttonPressed,
-              ]}>
-              <Text style={styles.countButtonText}>Vehicles: {vehicleCount}</Text>
-            </Pressable>
+              onPress={closeCountPicker}
+              style={styles.pickerDismissLayer}
+            />
+          )}
+
+          <View style={styles.countSelector}>
+            <View style={styles.countHeader}>
+              <Pressable
+                accessibilityLabel={menuOpen ? 'Close menu' : 'Open menu'}
+                accessibilityRole="button"
+                onPress={() => {
+                  setActiveCountPicker(null);
+                  setMenuOpen((currentValue) => !currentValue);
+                }}
+                style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}>
+                <View style={styles.menuLine} />
+                <View style={styles.menuLine} />
+                <View style={styles.menuLine} />
+              </Pressable>
+
+              <View style={styles.countControls}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={togglePublisherPicker}
+                  style={({ pressed }) => [
+                    styles.countButton,
+                    activeCountPicker === 'publishers' && styles.countButtonActive,
+                    pressed && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.countButtonText}>Publishers: {publisherCount}</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={toggleVehiclePicker}
+                  style={({ pressed }) => [
+                    styles.countButton,
+                    activeCountPicker === 'vehicles' && styles.countButtonActive,
+                    pressed && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.countButtonText}>Vehicles: {vehicleCount}</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {activeCountPicker && (
+              <View style={styles.dropdownRow}>
+                <View style={styles.dropdownMenuSpacer} />
+
+                <View style={styles.dropdownControls}>
+                  {activeCountPicker === 'publishers' ? (
+                    <CountDropdown
+                      activeCount={activeCount}
+                      activeCountOptions={activeCountOptions}
+                      selectCount={selectCount}
+                    />
+                  ) : (
+                    <View style={styles.dropdownSlot} />
+                  )}
+
+                  {activeCountPicker === 'vehicles' ? (
+                    <CountDropdown
+                      activeCount={activeCount}
+                      activeCountOptions={activeCountOptions}
+                      selectCount={selectCount}
+                    />
+                  ) : (
+                    <View style={styles.dropdownSlot} />
+                  )}
+                </View>
+              </View>
+            )}
           </View>
 
-          {activeCountPicker && (
-            <View
-              style={[
-                styles.dropdown,
-                activeCountPicker === 'publishers' ? styles.dropdownLeft : styles.dropdownRight,
-              ]}>
-              <ScrollView
-                nestedScrollEnabled
-                style={styles.dropdownScroll}
-                contentContainerStyle={styles.dropdownContent}
-                showsVerticalScrollIndicator={false}>
-                {activeCountOptions.map((count) => {
-                  const isSelected = count === activeCount;
-
-                  return (
-                    <Pressable
-                      accessibilityRole="button"
-                      key={count}
-                      onPress={() => selectCount(count)}
-                      style={({ pressed }) => [
-                        styles.dropdownOption,
-                        isSelected && styles.dropdownOptionSelected,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <Text
-                        style={[
-                          styles.dropdownOptionText,
-                          isSelected && styles.dropdownOptionTextSelected,
-                        ]}>
-                        {count}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.actionBar}>
+          <View style={styles.actionBar}>
           <Pressable
             accessibilityRole="button"
             onPress={startOver}
@@ -181,7 +215,7 @@ export function ResultsScreen({
               Recalculate
             </Text>
           </Pressable>
-        </View>
+          </View>
 
         {!!errorMessage && (
           <View style={styles.errorPanel}>
@@ -327,8 +361,53 @@ export function ResultsScreen({
             );
           })}
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
+  );
+}
+
+function CountDropdown({
+  activeCount,
+  activeCountOptions,
+  selectCount,
+}: {
+  activeCount: number;
+  activeCountOptions: number[];
+  selectCount: (count: number) => void;
+}) {
+  return (
+    <View style={[styles.dropdownSlot, styles.dropdown]}>
+      <ScrollView
+        nestedScrollEnabled
+        style={styles.dropdownScroll}
+        contentContainerStyle={styles.dropdownContent}
+        showsVerticalScrollIndicator={false}>
+        {activeCountOptions.map((count) => {
+          const isSelected = count === activeCount;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={count}
+              onPress={() => selectCount(count)}
+              style={({ pressed }) => [
+                styles.dropdownOption,
+                isSelected && styles.dropdownOptionSelected,
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text
+                style={[
+                  styles.dropdownOptionText,
+                  isSelected && styles.dropdownOptionTextSelected,
+                ]}>
+                {count}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -376,6 +455,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  screenPanel: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  pickerDismissLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 1,
+  },
   content: {
     paddingHorizontal: 24,
     paddingBottom: 36,
@@ -384,14 +475,39 @@ const styles = StyleSheet.create({
   },
   countSelector: {
     gap: 10,
+    zIndex: 2,
+  },
+  countHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  menuButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+  },
+  menuLine: {
+    width: 18,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.text,
   },
   countControls: {
+    flex: 1,
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
+    marginLeft: 6,
   },
   countButton: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -406,22 +522,31 @@ const styles = StyleSheet.create({
   },
   countButtonText: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
   },
+  dropdownRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dropdownMenuSpacer: {
+    width: 44,
+  },
+  dropdownControls: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 6,
+  },
+  dropdownSlot: {
+    flex: 1,
+  },
   dropdown: {
-    width: '48%',
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.large,
     backgroundColor: colors.surfaceStrong,
-  },
-  dropdownLeft: {
-    alignSelf: 'flex-start',
-  },
-  dropdownRight: {
-    alignSelf: 'flex-end',
   },
   dropdownScroll: {
     maxHeight: 220,
