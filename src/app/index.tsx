@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radii } from '@/styles/theme';
@@ -8,7 +8,11 @@ export default function StartScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
-        <Text style={styles.title}>Field Service Assistant</Text>
+        <Image
+          accessibilityLabel="Field Service Assistant logo"
+          source={require('../assets/Field Service Assistant logo 2.png')}
+          style={styles.logo}
+        />
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/select')}
@@ -32,12 +36,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 32,
   },
-  title: {
-    textAlign: 'center',
-    color: colors.text,
-    fontSize: 34,
-    fontWeight: '700',
-    lineHeight: 40,
+  logo: {
+    width: 280,
+    height: 280,
+    resizeMode: 'contain',
   },
   startButton: {
     minWidth: 160,
