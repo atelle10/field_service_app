@@ -2,18 +2,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
-import {
-  DistributionStrategy,
-  vehicleCountOptions,
-} from '@/models/group-assignment';
-import {
-  createDefaultVehicles,
-  createPlaceholderPassengers,
-  requestDistributionSuggestion,
-} from '@/services/group-assignment-service';
+import { useGroupSession } from '@/context/group-session-context';
+import { vehicleCountOptions } from '@/models/group-assignment';
 
 export function useVehicleSelectionController() {
   const { publishers } = useLocalSearchParams<{ publishers?: string }>();
+  const { beginNewDistribution } = useGroupSession();
   const [vehicleCount, setVehicleCount] = useState(1);
 
   const publisherCount = useMemo(() => {
@@ -23,30 +17,18 @@ export function useVehicleSelectionController() {
       : 1;
   }, [publishers]);
 
-  const confirmVehicleCount = async () => {
-    const passengers = createPlaceholderPassengers(publisherCount);
-    const vehicles = createDefaultVehicles(vehicleCount);
+  const confirmVehicleCount = () => {
+    const result = beginNewDistribution(publisherCount, vehicleCount);
 
-    try {
-      await requestDistributionSuggestion({
-        passengers,
-        vehicles,
-        strategy: DistributionStrategy.MinimizeCars,
-      });
-
-      router.push({
-        pathname: '/results',
-        params: {
-          publishers: String(publisherCount),
-          vehicles: String(vehicleCount),
-        },
-      });
-    } catch (error) {
+    if (!result.ok) {
       Alert.alert(
         'Not enough seats',
-        error instanceof Error ? error.message : 'Please add more vehicles.',
+        result.errorMessage,
       );
+      return;
     }
+
+    router.push('/results');
   };
 
   return {
