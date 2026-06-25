@@ -149,9 +149,14 @@ export function useResultsController() {
     router.replace('/select');
   };
 
+  const goHome = () => {
+    return;
+  };
+
   return {
     distribution: state.distribution,
     errorMessage: state.errorMessage,
+    goHome,
     isLoading: state.isLoading,
     publisherCount: state.publisherCount,
     recalculateDistribution,

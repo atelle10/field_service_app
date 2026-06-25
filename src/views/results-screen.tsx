@@ -25,6 +25,7 @@ type ActiveCountPicker = 'publishers' | 'vehicles' | null;
 type ResultsScreenProps = {
   distribution: DistributionResponse | null;
   errorMessage: string;
+  goHome: () => void;
   isLoading: boolean;
   publisherCount: number;
   recalculateDistribution: () => void;
@@ -40,6 +41,7 @@ type ResultsScreenProps = {
 export function ResultsScreen({
   distribution,
   errorMessage,
+  goHome,
   isLoading,
   publisherCount,
   recalculateDistribution,
@@ -136,6 +138,7 @@ export function ResultsScreen({
       {menuOpen && (
         <AppMenuDrawer
           onClose={() => setMenuOpen(false)}
+          onSelectHome={goHome}
           onSelectOption={() => undefined}
         />
       )}

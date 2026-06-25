@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Info, SlidersHorizontal, StepBack, UsersRound } from 'lucide-react-native';
+import { House, Info, SlidersHorizontal, StepBack, UsersRound } from 'lucide-react-native';
 import {
   Animated,
   Easing,
@@ -24,10 +24,11 @@ const menuTextSize = 13;
 
 type AppMenuDrawerProps = {
   onClose: () => void;
+  onSelectHome: () => void;
   onSelectOption: () => void;
 };
 
-export function AppMenuDrawer({ onClose, onSelectOption }: AppMenuDrawerProps) {
+export function AppMenuDrawer({ onClose, onSelectHome, onSelectOption }: AppMenuDrawerProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [translateProgress] = useState(() => new Animated.Value(-1));
@@ -84,6 +85,14 @@ export function AppMenuDrawer({ onClose, onSelectOption }: AppMenuDrawerProps) {
       </View>
 
       <View style={styles.optionList}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => closeDrawer(onSelectHome)}
+          style={({ pressed }) => [styles.option, pressed && styles.buttonPressed]}>
+          <House color={colors.text} size={16} strokeWidth={2.2} />
+          <Text style={styles.optionText}>Home</Text>
+        </Pressable>
+
         {menuOptions.map(({ Icon, label }) => (
           <Pressable
             accessibilityRole="button"
