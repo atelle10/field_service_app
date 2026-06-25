@@ -1,0 +1,411 @@
+import { StyleSheet } from 'react-native';
+
+import { colors, radii } from '@/styles/theme';
+
+export const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  screenPanel: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  pickerDismissLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 1,
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+    paddingTop: 28,
+    gap: 18,
+  },
+  countSelector: {
+    gap: 10,
+    zIndex: 2,
+  },
+  countHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  menuButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+  },
+  countControls: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 6,
+  },
+  countButton: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+  },
+  countButtonActive: {
+    borderColor: colors.mint,
+    backgroundColor: colors.deepForest,
+  },
+  countButtonText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dropdownRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dropdownMenuSpacer: {
+    width: 44,
+  },
+  dropdownControls: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 6,
+  },
+  dropdownSlot: {
+    flex: 1,
+  },
+  dropdown: {
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.large,
+    backgroundColor: colors.surfaceStrong,
+  },
+  dropdownScroll: {
+    maxHeight: 220,
+  },
+  dropdownContent: {
+    padding: 6,
+  },
+  dropdownOption: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+  },
+  dropdownOptionSelected: {
+    backgroundColor: colors.mint,
+  },
+  dropdownOptionText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  dropdownOptionTextSelected: {
+    color: colors.background,
+  },
+  actionBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.deepForest,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  actionButtonWithIcon: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButtonText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  recalculateButtonActive: {
+    borderColor: colors.mint,
+    backgroundColor: colors.surface,
+  },
+  recalculateButtonDisabled: {
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  recalculateButtonTextDisabled: {
+    color: colors.textSubtle,
+  },
+  recalculateButtonTextActive: {
+    color: colors.mint,
+  },
+  loadingScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 18,
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  errorPanel: {
+    gap: 6,
+    borderRadius: radii.medium,
+    backgroundColor: colors.dangerBackground,
+    padding: 16,
+  },
+  errorTitle: {
+    color: colors.dangerText,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  errorText: {
+    color: colors.dangerText,
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  summaryMenu: {
+    gap: 10,
+  },
+  summaryToggle: {
+    minHeight: 46,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+  },
+  summaryToggleText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  summaryToggleIcon: {
+    color: colors.mint,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  summaryItem: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: radii.medium,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 14,
+  },
+  summaryItemForest: {
+    borderTopWidth: 4,
+    borderTopColor: colors.deepForest,
+  },
+  summaryItemPurple: {
+    borderTopWidth: 4,
+    borderTopColor: colors.purple,
+  },
+  summaryItemMint: {
+    borderTopWidth: 4,
+    borderTopColor: colors.mint,
+  },
+  summaryValue: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  summaryValueForest: {
+    color: colors.mint,
+  },
+  summaryValuePurple: {
+    color: colors.text,
+  },
+  summaryValueMint: {
+    color: colors.mint,
+  },
+  summaryLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  vehicleList: {
+    gap: 12,
+  },
+  vehicleCard: {
+    gap: 14,
+    borderLeftWidth: 4,
+    borderWidth: 1,
+    borderRadius: radii.medium,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceStrong,
+    padding: 16,
+  },
+  vehicleCardInUse: {
+    borderLeftColor: colors.deepForest,
+  },
+  vehicleCardUnused: {
+    borderLeftColor: colors.textSubtle,
+  },
+  vehicleCardOverCapacity: {
+    backgroundColor: colors.dangerBackground,
+    borderColor: colors.dangerText,
+    borderLeftColor: colors.dangerText,
+  },
+  vehicleHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  vehicleTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  vehicleTitle: {
+    color: colors.text,
+    fontSize: 19,
+    fontWeight: '700',
+  },
+  vehicleMeta: {
+    color: colors.textMuted,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  vehicleMetaOverCapacity: {
+    color: colors.dangerText,
+    fontWeight: '700',
+  },
+  vehicleWarning: {
+    borderWidth: 1,
+    borderColor: colors.dangerText,
+    borderRadius: radii.small,
+    backgroundColor: colors.surfaceStrong,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  vehicleWarningText: {
+    color: colors.dangerText,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  capacityControls: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  stepperButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderWidth: 1,
+    borderColor: colors.deepForest,
+    borderRadius: radii.small,
+    backgroundColor: colors.background,
+  },
+  stepperButtonWarning: {
+    borderColor: colors.dangerText,
+  },
+  stepperText: {
+    color: colors.mint,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
+  stepperTextWarning: {
+    color: colors.dangerText,
+  },
+  capacityBadge: {
+    minWidth: 34,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+    paddingHorizontal: 8,
+  },
+  capacityBadgeWarning: {
+    backgroundColor: colors.dangerText,
+  },
+  capacityText: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  capacityTextWarning: {
+    color: colors.background,
+  },
+  seatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  occupiedSeat: {
+    minWidth: 102,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+    backgroundColor: colors.purple,
+    paddingHorizontal: 12,
+  },
+  occupiedSeatWarning: {
+    backgroundColor: colors.dangerText,
+  },
+  occupiedSeatText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  occupiedSeatTextWarning: {
+    color: colors.background,
+  },
+  openSeat: {
+    minWidth: 86,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.small,
+    backgroundColor: colors.mint,
+    paddingHorizontal: 12,
+  },
+  openSeatText: {
+    color: colors.background,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  emptySeatText: {
+    color: colors.textSubtle,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  buttonPressed: {
+    opacity: 0.82,
+  },
+});
