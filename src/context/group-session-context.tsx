@@ -18,6 +18,7 @@ import {
   markResultsStale,
   resizeVehicles,
   type ResultsHistoryEntry,
+  updateVehicleLabelInResultsState,
   validateNewDistribution,
 } from '@/services/group-session-service';
 
@@ -39,6 +40,7 @@ type GroupSessionContextValue = {
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
   updateVehicleCount: (vehicleCount: number) => void;
+  updateVehicleLabel: (vehicleId: string, label: string) => void;
 };
 
 const GroupSessionContext = createContext<GroupSessionContextValue | null>(null);
@@ -197,6 +199,23 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateVehicleLabel = (vehicleId: string, label: string) => {
+    setState((currentState) => {
+      if (!currentState.activeSession) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        activeSession: updateVehicleLabelInResultsState(
+          currentState.activeSession,
+          vehicleId,
+          label,
+        ),
+      };
+    });
+  };
+
   const recalculateDistribution = () => {
     const activeSession = state.activeSession;
 
@@ -218,6 +237,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         updatePublisherCount,
         updateVehicleCapacity,
         updateVehicleCount,
+        updateVehicleLabel,
       }}>
       {children}
     </GroupSessionContext.Provider>

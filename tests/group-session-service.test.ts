@@ -10,6 +10,7 @@ import {
   createEmptyGroupSessionState,
   markResultsStale,
   resizeVehicles,
+  updateVehicleLabelInResultsState,
   validateNewDistribution,
 } from '@/services/group-session-service';
 
@@ -55,6 +56,20 @@ describe('group session service', () => {
     assert.equal(staleState.rerunPromptVisible, true);
     assert.equal(staleState.vehicles.length, 3);
     assert.equal(staleState.distribution, completedState.distribution);
+  });
+
+  it('updates vehicle labels in active session state without marking results stale', () => {
+    const completedState = createCompletedResultsState(8, createDefaultVehicles(2), false);
+    const renamedState = updateVehicleLabelInResultsState(
+      completedState,
+      'vehicle-1',
+      'Roberto',
+    );
+
+    assert.equal(renamedState.vehicles[0].label, 'Roberto');
+    assert.equal(renamedState.distribution?.assignments[0].label, 'Roberto');
+    assert.equal(renamedState.rerunPromptVisible, false);
+    assert.equal(renamedState.distribution?.summary, completedState.distribution?.summary);
   });
 
   it('appends history when a calculation completes successfully', () => {

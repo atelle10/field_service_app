@@ -11,6 +11,7 @@ export function useResultsController() {
     updatePublisherCount,
     updateVehicleCapacity,
     updateVehicleCount,
+    updateVehicleLabel,
   } = useGroupSession();
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export function useResultsController() {
     updatePublisherCount,
     updateVehicleCount,
     updateVehicleCapacity,
+    updateVehicleLabel,
     vehicleCount: activeSession?.vehicles.length ?? 1,
     vehicles: activeSession?.vehicles ?? [],
   };

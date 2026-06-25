@@ -149,6 +149,35 @@ export function markResultsStale(state: ActiveResultsState): ActiveResultsState 
   };
 }
 
+export function updateVehicleLabelInResultsState(
+  state: ActiveResultsState,
+  vehicleId: string,
+  label: string,
+): ActiveResultsState {
+  const nextLabel = label.trim();
+
+  if (!nextLabel) {
+    return state;
+  }
+
+  return {
+    ...state,
+    distribution: state.distribution
+      ? {
+          ...state.distribution,
+          assignments: state.distribution.assignments.map((assignment) =>
+            assignment.vehicleId === vehicleId
+              ? { ...assignment, label: nextLabel }
+              : assignment,
+          ),
+        }
+      : state.distribution,
+    vehicles: state.vehicles.map((vehicle) =>
+      vehicle.id === vehicleId ? { ...vehicle, label: nextLabel } : vehicle,
+    ),
+  };
+}
+
 export function resizeVehicles(vehicles: VehicleInput[], vehicleCount: number) {
   if (vehicleCount <= vehicles.length) {
     return vehicles.slice(0, vehicleCount);

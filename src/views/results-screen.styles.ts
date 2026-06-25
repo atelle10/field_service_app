@@ -281,15 +281,59 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  vehicleTitleRow: {
+  vehicleTitlePanel: {
+    flex: 1,
+    minWidth: 0,
+  },
+  vehicleTitleButton: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+  },
+  vehicleTitle: {
+    color: colors.text,
+    flexShrink: 1,
+    fontSize: 19,
+    fontWeight: '700',
+  },
+  vehicleNameEditor: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
   },
-  vehicleTitle: {
+  vehicleNameInput: {
+    flex: 1,
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: colors.mint,
+    borderRadius: radii.small,
+    backgroundColor: colors.background,
     color: colors.text,
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '700',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  vehicleNameEditActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  vehicleNameIconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.background,
+  },
+  vehicleNameSaveButton: {
+    borderColor: colors.mint,
+    backgroundColor: colors.mint,
   },
   vehicleMeta: {
     color: colors.textMuted,

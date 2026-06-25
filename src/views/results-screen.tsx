@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Menu, Pencil, RefreshCcw } from 'lucide-react-native';
+import { Check, Menu, Pencil, RefreshCcw, X } from 'lucide-react-native';
 import {
   ActivityIndicator,
   Animated,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,6 +35,7 @@ type ResultsScreenProps = {
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCount: (vehicleCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
+  updateVehicleLabel: (vehicleId: string, label: string) => void;
   vehicleCount: number;
   vehicles: VehicleInput[];
 };
@@ -50,10 +52,13 @@ export function ResultsScreen({
   updatePublisherCount,
   updateVehicleCount,
   updateVehicleCapacity,
+  updateVehicleLabel,
   vehicleCount,
   vehicles,
 }: ResultsScreenProps) {
   const [activeCountPicker, setActiveCountPicker] = useState<ActiveCountPicker>(null);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [editingVehicleLabel, setEditingVehicleLabel] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [recalculatePulse] = useState(() => new Animated.Value(1));
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -120,6 +125,26 @@ export function ResultsScreen({
     }
 
     closeCountPicker();
+  };
+
+  const startEditingVehicleLabel = (vehicle: VehicleInput) => {
+    setEditingVehicleId(vehicle.id);
+    setEditingVehicleLabel(vehicle.label);
+  };
+
+  const cancelEditingVehicleLabel = () => {
+    setEditingVehicleId(null);
+    setEditingVehicleLabel('');
+  };
+
+  const saveEditingVehicleLabel = (vehicle: VehicleInput) => {
+    const nextLabel = editingVehicleLabel.trim();
+
+    if (nextLabel) {
+      updateVehicleLabel(vehicle.id, nextLabel);
+    }
+
+    cancelEditingVehicleLabel();
   };
 
   if (isLoading) {
@@ -304,6 +329,7 @@ export function ResultsScreen({
             const openSeatCount = Math.max(vehicle.capacity - passengerIds.length, 0);
             const isOverCapacity = passengerIds.length > vehicle.capacity;
             const overCapacityCount = Math.max(passengerIds.length - vehicle.capacity, 0);
+            const isEditingVehicleLabel = editingVehicleId === vehicle.id;
 
             return (
               <View
@@ -314,11 +340,61 @@ export function ResultsScreen({
                   isOverCapacity && styles.vehicleCardOverCapacity,
                 ]}>
                 <View style={styles.vehicleHeader}>
-                  <View>
-                    <View style={styles.vehicleTitleRow}>
-                      <Text style={styles.vehicleTitle}>{vehicle.label}</Text>
-                      <Pencil color={colors.textMuted} size={16} strokeWidth={2.3} />
-                    </View>
+                  <View style={styles.vehicleTitlePanel}>
+                    {isEditingVehicleLabel ? (
+                      <View style={styles.vehicleNameEditor}>
+                        <TextInput
+                          accessibilityLabel={`${vehicle.label} name`}
+                          autoFocus
+                          onChangeText={setEditingVehicleLabel}
+                          onSubmitEditing={() => saveEditingVehicleLabel(vehicle)}
+                          returnKeyType="done"
+                          selectTextOnFocus
+                          style={styles.vehicleNameInput}
+                          value={editingVehicleLabel}
+                        />
+
+                        <View style={styles.vehicleNameEditActions}>
+                          <Pressable
+                            accessibilityLabel="Save vehicle name"
+                            accessibilityRole="button"
+                            onPress={() => saveEditingVehicleLabel(vehicle)}
+                            style={({ pressed }) => [
+                              styles.vehicleNameIconButton,
+                              styles.vehicleNameSaveButton,
+                              pressed && styles.buttonPressed,
+                            ]}>
+                            <Check color={colors.background} size={18} strokeWidth={2.8} />
+                          </Pressable>
+
+                          <Pressable
+                            accessibilityLabel="Cancel vehicle name edit"
+                            accessibilityRole="button"
+                            onPress={cancelEditingVehicleLabel}
+                            style={({ pressed }) => [
+                              styles.vehicleNameIconButton,
+                              pressed && styles.buttonPressed,
+                            ]}>
+                            <X color={colors.textMuted} size={18} strokeWidth={2.6} />
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : (
+                      <Pressable
+                        accessibilityLabel={`Edit ${vehicle.label} name`}
+                        accessibilityRole="button"
+                        onPress={() => startEditingVehicleLabel(vehicle)}
+                        style={({ pressed }) => [
+                          styles.vehicleTitleButton,
+                          pressed && styles.buttonPressed,
+                        ]}>
+                        <Text style={styles.vehicleTitle} numberOfLines={1}>
+                          {vehicle.label}
+                        </Text>
+                        <Pencil color={colors.textMuted} size={16} strokeWidth={2.3} />
+                      </Pressable>
+                    )}
+
                     <Text
                       style={[
                         styles.vehicleMeta,
