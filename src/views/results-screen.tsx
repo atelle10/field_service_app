@@ -3,6 +3,7 @@ import { Check, Menu, Pencil, RefreshCcw, X } from 'lucide-react-native';
 import {
   ActivityIndicator,
   Animated,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -14,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   publisherCountOptions,
   type DistributionResponse,
+  type PublisherProfile,
   type VehicleInput,
   vehicleCountOptions,
 } from '@/models/group-assignment';
@@ -24,13 +26,19 @@ import { styles } from '@/views/results-screen.styles';
 type ActiveCountPicker = 'publishers' | 'vehicles' | null;
 
 type ResultsScreenProps = {
+  assignPublisherName: (passengerId: string, name: string) => void;
+  assignPublisherProfile: (passengerId: string, publisherId: string) => void;
   distribution: DistributionResponse | null;
   errorMessage: string;
+  getPassengerDisplayName: (passengerId: string) => string;
+  hasAssignedPublisherProfile: (passengerId: string) => boolean;
   goHome: () => void;
   isLoading: boolean;
   publisherCount: number;
+  publisherProfiles: PublisherProfile[];
   recalculateDistribution: () => void;
   rerunPromptVisible: boolean;
+  restorePassengerDefaultLabel: (passengerId: string) => void;
   startOver: () => void;
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCount: (vehicleCount: number) => void;
@@ -41,13 +49,19 @@ type ResultsScreenProps = {
 };
 
 export function ResultsScreen({
+  assignPublisherName,
+  assignPublisherProfile,
   distribution,
   errorMessage,
+  getPassengerDisplayName,
+  hasAssignedPublisherProfile,
   goHome,
   isLoading,
   publisherCount,
+  publisherProfiles,
   recalculateDistribution,
   rerunPromptVisible,
+  restorePassengerDefaultLabel,
   startOver,
   updatePublisherCount,
   updateVehicleCount,
@@ -60,7 +74,9 @@ export function ResultsScreen({
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [editingVehicleLabel, setEditingVehicleLabel] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [publisherNameInput, setPublisherNameInput] = useState('');
   const [recalculatePulse] = useState(() => new Animated.Value(1));
+  const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
@@ -147,6 +163,45 @@ export function ResultsScreen({
     cancelEditingVehicleLabel();
   };
 
+  const openPublisherEditor = (passengerId: string) => {
+    setActiveCountPicker(null);
+    setMenuOpen(false);
+    setSelectedPassengerId(passengerId);
+    setPublisherNameInput('');
+  };
+
+  const closePublisherEditor = () => {
+    setSelectedPassengerId(null);
+    setPublisherNameInput('');
+  };
+
+  const savePublisherName = () => {
+    if (!selectedPassengerId || !publisherNameInput.trim()) {
+      return;
+    }
+
+    assignPublisherName(selectedPassengerId, publisherNameInput);
+    closePublisherEditor();
+  };
+
+  const selectPublisherProfile = (publisherId: string) => {
+    if (!selectedPassengerId) {
+      return;
+    }
+
+    assignPublisherProfile(selectedPassengerId, publisherId);
+    closePublisherEditor();
+  };
+
+  const restoreSelectedPassengerDefaultLabel = () => {
+    if (!selectedPassengerId) {
+      return;
+    }
+
+    restorePassengerDefaultLabel(selectedPassengerId);
+    closePublisherEditor();
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -167,6 +222,21 @@ export function ResultsScreen({
           onSelectOption={() => undefined}
         />
       )}
+
+      <PublisherEditorModal
+        canRestoreDefault={
+          selectedPassengerId ? hasAssignedPublisherProfile(selectedPassengerId) : false
+        }
+        currentLabel={selectedPassengerId ? getPassengerDisplayName(selectedPassengerId) : ''}
+        nameInput={publisherNameInput}
+        onCancel={closePublisherEditor}
+        onChangeName={setPublisherNameInput}
+        onConfirm={savePublisherName}
+        onRestoreDefault={restoreSelectedPassengerDefaultLabel}
+        onSelectProfile={selectPublisherProfile}
+        publisherProfiles={publisherProfiles}
+        visible={selectedPassengerId !== null}
+      />
 
       <View style={styles.screenPanel}>
         <ScrollView
@@ -250,238 +320,400 @@ export function ResultsScreen({
           </View>
 
           <View style={styles.actionBar}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={startOver}
-            style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}>
-            <Text style={styles.actionButtonText}>Start Over</Text>
-          </Pressable>
-
-          <Animated.View style={{ transform: [{ scale: recalculatePulse }] }}>
             <Pressable
               accessibilityRole="button"
-              disabled={!rerunPromptVisible}
-              onPress={recalculateDistribution}
-              style={({ pressed }) => [
-                styles.actionButton,
-                styles.actionButtonWithIcon,
-                rerunPromptVisible ? styles.recalculateButtonActive : styles.recalculateButtonDisabled,
-                pressed && styles.buttonPressed,
-              ]}>
-              <RefreshCcw color={recalculateIconColor} size={16} strokeWidth={2.5} />
-              <Text
-                style={[
-                  styles.actionButtonText,
-                  rerunPromptVisible && styles.recalculateButtonTextActive,
-                  !rerunPromptVisible && styles.recalculateButtonTextDisabled,
-                ]}>
-                Recalculate
-              </Text>
-            </Pressable>
-          </Animated.View>
-          </View>
-
-        {!!errorMessage && (
-          <View style={styles.errorPanel}>
-            <Text style={styles.errorTitle}>Not enough seats</Text>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
-        )}
-
-        {distribution?.summary && (
-          <View style={styles.summaryMenu}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setSummaryExpanded((currentValue) => !currentValue)}
-              style={({ pressed }) => [styles.summaryToggle, pressed && styles.buttonPressed]}>
-              <Text style={styles.summaryToggleText}>Distribution Summary</Text>
-              <Text style={styles.summaryToggleIcon}>{summaryExpanded ? '-' : '+'}</Text>
+              onPress={startOver}
+              style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}>
+              <Text style={styles.actionButtonText}>Start Over</Text>
             </Pressable>
 
-            {summaryExpanded && (
-              <View style={styles.summaryRow}>
-                <SummaryItem
-                  label="Vehicles Used"
-                  value={String(distribution.summary.vehiclesUsed)}
-                  tone="forest"
-                />
-                <SummaryItem
-                  label="Total Seats"
-                  value={String(distribution.summary.totalCapacity)}
-                  tone="purple"
-                />
-                <SummaryItem
-                  label="Open"
-                  value={String(distribution.summary.unusedSeats)}
-                  tone="mint"
-                />
-              </View>
-            )}
-          </View>
-        )}
-
-        <View style={styles.vehicleList}>
-          {vehicles.map((vehicle) => {
-            const assignment = distribution?.assignments.find(
-              (vehicleAssignment) => vehicleAssignment.vehicleId === vehicle.id,
-            );
-            const passengerIds = assignment?.passengerIds ?? [];
-            const openSeatCount = Math.max(vehicle.capacity - passengerIds.length, 0);
-            const isOverCapacity = passengerIds.length > vehicle.capacity;
-            const overCapacityCount = Math.max(passengerIds.length - vehicle.capacity, 0);
-            const isEditingVehicleLabel = editingVehicleId === vehicle.id;
-
-            return (
-              <View
-                key={vehicle.id}
-                style={[
-                  styles.vehicleCard,
-                  passengerIds.length > 0 ? styles.vehicleCardInUse : styles.vehicleCardUnused,
-                  isOverCapacity && styles.vehicleCardOverCapacity,
+            <Animated.View style={{ transform: [{ scale: recalculatePulse }] }}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={!rerunPromptVisible}
+                onPress={recalculateDistribution}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.actionButtonWithIcon,
+                  rerunPromptVisible
+                    ? styles.recalculateButtonActive
+                    : styles.recalculateButtonDisabled,
+                  pressed && styles.buttonPressed,
                 ]}>
-                <View style={styles.vehicleHeader}>
-                  <View style={styles.vehicleTitlePanel}>
-                    {isEditingVehicleLabel ? (
-                      <View style={styles.vehicleNameEditor}>
-                        <TextInput
-                          accessibilityLabel={`${vehicle.label} name`}
-                          autoFocus
-                          onChangeText={setEditingVehicleLabel}
-                          onSubmitEditing={() => saveEditingVehicleLabel(vehicle)}
-                          returnKeyType="done"
-                          selectTextOnFocus
-                          style={styles.vehicleNameInput}
-                          value={editingVehicleLabel}
-                        />
+                <RefreshCcw color={recalculateIconColor} size={16} strokeWidth={2.5} />
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    rerunPromptVisible && styles.recalculateButtonTextActive,
+                    !rerunPromptVisible && styles.recalculateButtonTextDisabled,
+                  ]}>
+                  Recalculate
+                </Text>
+              </Pressable>
+            </Animated.View>
+          </View>
 
-                        <View style={styles.vehicleNameEditActions}>
-                          <Pressable
-                            accessibilityLabel="Save vehicle name"
-                            accessibilityRole="button"
-                            onPress={() => saveEditingVehicleLabel(vehicle)}
-                            style={({ pressed }) => [
-                              styles.vehicleNameIconButton,
-                              styles.vehicleNameSaveButton,
-                              pressed && styles.buttonPressed,
-                            ]}>
-                            <Check color={colors.background} size={18} strokeWidth={2.8} />
-                          </Pressable>
+          {!!errorMessage && (
+            <View style={styles.errorPanel}>
+              <Text style={styles.errorTitle}>Not enough seats</Text>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
 
-                          <Pressable
-                            accessibilityLabel="Cancel vehicle name edit"
-                            accessibilityRole="button"
-                            onPress={cancelEditingVehicleLabel}
-                            style={({ pressed }) => [
-                              styles.vehicleNameIconButton,
-                              pressed && styles.buttonPressed,
-                            ]}>
-                            <X color={colors.textMuted} size={18} strokeWidth={2.6} />
-                          </Pressable>
+          {distribution?.summary && (
+            <View style={styles.summaryMenu}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setSummaryExpanded((currentValue) => !currentValue)}
+                style={({ pressed }) => [
+                  styles.summaryToggle,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <Text style={styles.summaryToggleText}>Distribution Summary</Text>
+                <Text style={styles.summaryToggleIcon}>{summaryExpanded ? '-' : '+'}</Text>
+              </Pressable>
+
+              {summaryExpanded && (
+                <View style={styles.summaryRow}>
+                  <SummaryItem
+                    label="Vehicles Used"
+                    value={String(distribution.summary.vehiclesUsed)}
+                    tone="forest"
+                  />
+                  <SummaryItem
+                    label="Total Seats"
+                    value={String(distribution.summary.totalCapacity)}
+                    tone="purple"
+                  />
+                  <SummaryItem
+                    label="Open"
+                    value={String(distribution.summary.unusedSeats)}
+                    tone="mint"
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={styles.vehicleList}>
+            {vehicles.map((vehicle) => {
+              const assignment = distribution?.assignments.find(
+                (vehicleAssignment) => vehicleAssignment.vehicleId === vehicle.id,
+              );
+              const passengerIds = assignment?.passengerIds ?? [];
+              const openSeatCount = Math.max(vehicle.capacity - passengerIds.length, 0);
+              const isOverCapacity = passengerIds.length > vehicle.capacity;
+              const overCapacityCount = Math.max(passengerIds.length - vehicle.capacity, 0);
+              const isEditingVehicleLabel = editingVehicleId === vehicle.id;
+
+              return (
+                <View
+                  key={vehicle.id}
+                  style={[
+                    styles.vehicleCard,
+                    passengerIds.length > 0
+                      ? styles.vehicleCardInUse
+                      : styles.vehicleCardUnused,
+                    isOverCapacity && styles.vehicleCardOverCapacity,
+                  ]}>
+                  <View style={styles.vehicleHeader}>
+                    <View style={styles.vehicleTitlePanel}>
+                      {isEditingVehicleLabel ? (
+                        <View style={styles.vehicleNameEditor}>
+                          <TextInput
+                            accessibilityLabel={`${vehicle.label} name`}
+                            autoFocus
+                            onChangeText={setEditingVehicleLabel}
+                            onSubmitEditing={() => saveEditingVehicleLabel(vehicle)}
+                            returnKeyType="done"
+                            selectTextOnFocus
+                            style={styles.vehicleNameInput}
+                            value={editingVehicleLabel}
+                          />
+
+                          <View style={styles.vehicleNameEditActions}>
+                            <Pressable
+                              accessibilityLabel="Save vehicle name"
+                              accessibilityRole="button"
+                              onPress={() => saveEditingVehicleLabel(vehicle)}
+                              style={({ pressed }) => [
+                                styles.vehicleNameIconButton,
+                                styles.vehicleNameSaveButton,
+                                pressed && styles.buttonPressed,
+                              ]}>
+                              <Check color={colors.background} size={18} strokeWidth={2.8} />
+                            </Pressable>
+
+                            <Pressable
+                              accessibilityLabel="Cancel vehicle name edit"
+                              accessibilityRole="button"
+                              onPress={cancelEditingVehicleLabel}
+                              style={({ pressed }) => [
+                                styles.vehicleNameIconButton,
+                                pressed && styles.buttonPressed,
+                              ]}>
+                              <X color={colors.textMuted} size={18} strokeWidth={2.6} />
+                            </Pressable>
+                          </View>
                         </View>
-                      </View>
-                    ) : (
+                      ) : (
+                        <Pressable
+                          accessibilityLabel={`Edit ${vehicle.label} name`}
+                          accessibilityRole="button"
+                          onPress={() => startEditingVehicleLabel(vehicle)}
+                          style={({ pressed }) => [
+                            styles.vehicleTitleButton,
+                            pressed && styles.buttonPressed,
+                          ]}>
+                          <Text style={styles.vehicleTitle} numberOfLines={1}>
+                            {vehicle.label}
+                          </Text>
+                          <Pencil color={colors.textMuted} size={16} strokeWidth={2.3} />
+                        </Pressable>
+                      )}
+
+                      <Text
+                        style={[
+                          styles.vehicleMeta,
+                          isOverCapacity && styles.vehicleMetaOverCapacity,
+                        ]}>
+                        {passengerIds.length}/{vehicle.capacity} seats
+                        {assignment?.inUse === false ? ' - unused' : ''}
+                      </Text>
+                    </View>
+
+                    <View style={styles.capacityControls}>
                       <Pressable
-                        accessibilityLabel={`Edit ${vehicle.label} name`}
                         accessibilityRole="button"
-                        onPress={() => startEditingVehicleLabel(vehicle)}
+                        onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity - 1)}
                         style={({ pressed }) => [
-                          styles.vehicleTitleButton,
+                          styles.stepperButton,
+                          isOverCapacity && styles.stepperButtonWarning,
                           pressed && styles.buttonPressed,
                         ]}>
-                        <Text style={styles.vehicleTitle} numberOfLines={1}>
-                          {vehicle.label}
+                        <Text
+                          style={[
+                            styles.stepperText,
+                            isOverCapacity && styles.stepperTextWarning,
+                          ]}>
+                          -
                         </Text>
-                        <Pencil color={colors.textMuted} size={16} strokeWidth={2.3} />
                       </Pressable>
-                    )}
-
-                    <Text
-                      style={[
-                        styles.vehicleMeta,
-                        isOverCapacity && styles.vehicleMetaOverCapacity,
-                      ]}>
-                      {passengerIds.length}/{vehicle.capacity} seats
-                      {assignment?.inUse === false ? ' - unused' : ''}
-                    </Text>
-                  </View>
-
-                  <View style={styles.capacityControls}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity - 1)}
-                      style={({ pressed }) => [
-                        styles.stepperButton,
-                        isOverCapacity && styles.stepperButtonWarning,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <Text style={[styles.stepperText, isOverCapacity && styles.stepperTextWarning]}>
-                        -
-                      </Text>
-                    </Pressable>
-                    <View style={[styles.capacityBadge, isOverCapacity && styles.capacityBadgeWarning]}>
-                      <Text
+                      <View
                         style={[
-                          styles.capacityText,
-                          isOverCapacity && styles.capacityTextWarning,
+                          styles.capacityBadge,
+                          isOverCapacity && styles.capacityBadgeWarning,
                         ]}>
-                        {vehicle.capacity}
-                      </Text>
-                    </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity + 1)}
-                      style={({ pressed }) => [
-                        styles.stepperButton,
-                        isOverCapacity && styles.stepperButtonWarning,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <Text style={[styles.stepperText, isOverCapacity && styles.stepperTextWarning]}>
-                        +
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-
-                {isOverCapacity && (
-                  <View style={styles.vehicleWarning}>
-                    <Text style={styles.vehicleWarningText}>
-                      {formatOverCapacityMessage(overCapacityCount)}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.seatGrid}>
-                  {passengerIds.map((passengerId) => (
-                    <View
-                      key={passengerId}
-                      style={[styles.occupiedSeat, isOverCapacity && styles.occupiedSeatWarning]}>
-                      <Text
-                        style={[
-                          styles.occupiedSeatText,
-                          isOverCapacity && styles.occupiedSeatTextWarning,
+                        <Text
+                          style={[
+                            styles.capacityText,
+                            isOverCapacity && styles.capacityTextWarning,
+                          ]}>
+                          {vehicle.capacity}
+                        </Text>
+                      </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity + 1)}
+                        style={({ pressed }) => [
+                          styles.stepperButton,
+                          isOverCapacity && styles.stepperButtonWarning,
+                          pressed && styles.buttonPressed,
                         ]}>
-                        {formatPassengerLabel(passengerId)}
+                        <Text
+                          style={[
+                            styles.stepperText,
+                            isOverCapacity && styles.stepperTextWarning,
+                          ]}>
+                          +
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {isOverCapacity && (
+                    <View style={styles.vehicleWarning}>
+                      <Text style={styles.vehicleWarningText}>
+                        {formatOverCapacityMessage(overCapacityCount)}
                       </Text>
                     </View>
-                  ))}
-
-                  {Array.from({ length: openSeatCount }, (_, index) => (
-                    <View key={`${vehicle.id}-open-${index}`} style={styles.openSeat}>
-                      <Text style={styles.openSeatText}>Open</Text>
-                    </View>
-                  ))}
-
-                  {passengerIds.length === 0 && openSeatCount === 0 && (
-                    <Text style={styles.emptySeatText}>No seats available</Text>
                   )}
+
+                  <View style={styles.seatGrid}>
+                    {passengerIds.map((passengerId) => (
+                      <Pressable
+                        accessibilityLabel={`Edit ${getPassengerDisplayName(passengerId)}`}
+                        accessibilityRole="button"
+                        key={passengerId}
+                        onPress={() => openPublisherEditor(passengerId)}
+                        style={({ pressed }) => [
+                          styles.occupiedSeat,
+                          isOverCapacity && styles.occupiedSeatWarning,
+                          pressed && styles.buttonPressed,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.occupiedSeatText,
+                            isOverCapacity && styles.occupiedSeatTextWarning,
+                          ]}>
+                          {getPassengerDisplayName(passengerId)}
+                        </Text>
+                      </Pressable>
+                    ))}
+
+                    {Array.from({ length: openSeatCount }, (_, index) => (
+                      <View key={`${vehicle.id}-open-${index}`} style={styles.openSeat}>
+                        <Text style={styles.openSeatText}>Open</Text>
+                      </View>
+                    ))}
+
+                    {passengerIds.length === 0 && openSeatCount === 0 && (
+                      <Text style={styles.emptySeatText}>No seats available</Text>
+                    )}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
+  );
+}
+
+function PublisherEditorModal({
+  canRestoreDefault,
+  currentLabel,
+  nameInput,
+  onCancel,
+  onChangeName,
+  onConfirm,
+  onRestoreDefault,
+  onSelectProfile,
+  publisherProfiles,
+  visible,
+}: {
+  canRestoreDefault: boolean;
+  currentLabel: string;
+  nameInput: string;
+  onCancel: () => void;
+  onChangeName: (name: string) => void;
+  onConfirm: () => void;
+  onRestoreDefault: () => void;
+  onSelectProfile: (publisherId: string) => void;
+  publisherProfiles: PublisherProfile[];
+  visible: boolean;
+}) {
+  const canConfirm = nameInput.trim().length > 0;
+
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onCancel}
+      transparent
+      visible={visible}>
+      <View style={styles.publisherModalOverlay}>
+        <View style={styles.publisherModalCard}>
+          <View style={styles.publisherModalHeader}>
+            <Text style={styles.publisherModalTitle}>Edit Publisher</Text>
+            <Pressable
+              accessibilityLabel="Close publisher editor"
+              accessibilityRole="button"
+              onPress={onCancel}
+              style={({ pressed }) => [
+                styles.publisherModalCloseButton,
+                pressed && styles.buttonPressed,
+              ]}>
+              <X color={colors.textMuted} size={20} strokeWidth={2.6} />
+            </Pressable>
+          </View>
+
+          <View style={styles.publisherCurrentLabelRow}>
+            <Text style={styles.publisherModalCurrentLabel} numberOfLines={1}>
+              {currentLabel}
+            </Text>
+
+            {canRestoreDefault && (
+              <Pressable
+                accessibilityLabel="Restore default publisher label"
+                accessibilityRole="button"
+                onPress={onRestoreDefault}
+                style={({ pressed }) => [
+                  styles.publisherRestoreDefaultButton,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <X color={colors.dangerText} size={16} strokeWidth={2.6} />
+              </Pressable>
+            )}
+          </View>
+
+          {publisherProfiles.length > 0 && (
+            <View style={styles.savedPublishersSection}>
+              <Text style={styles.savedPublishersLabel}>Saved Publishers</Text>
+              <View style={styles.savedPublisherList}>
+                {publisherProfiles.map((publisher) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={publisher.id}
+                    onPress={() => onSelectProfile(publisher.id)}
+                    style={({ pressed }) => [
+                      styles.savedPublisherButton,
+                      pressed && styles.buttonPressed,
+                    ]}>
+                    <Text style={styles.savedPublisherButtonText}>{publisher.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <TextInput
+            accessibilityLabel="Publisher name"
+            autoCapitalize="words"
+            onChangeText={onChangeName}
+            onSubmitEditing={onConfirm}
+            placeholder="Enter publisher name"
+            placeholderTextColor={colors.textSubtle}
+            returnKeyType="done"
+            style={styles.publisherNameInput}
+            value={nameInput}
+          />
+
+          <View style={styles.publisherModalActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onCancel}
+              style={({ pressed }) => [
+                styles.publisherModalButton,
+                styles.publisherModalSecondaryButton,
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text style={styles.publisherModalSecondaryButtonText}>Cancel</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={!canConfirm}
+              onPress={onConfirm}
+              style={({ pressed }) => [
+                styles.publisherModalButton,
+                canConfirm
+                  ? styles.publisherModalPrimaryButton
+                  : styles.publisherModalDisabledButton,
+                pressed && canConfirm && styles.buttonPressed,
+              ]}>
+              <Text
+                style={[
+                  styles.publisherModalPrimaryButtonText,
+                  !canConfirm && styles.publisherModalDisabledButtonText,
+                ]}>
+                Confirm
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -557,10 +789,6 @@ function SummaryItem({
       <Text style={styles.summaryLabel}>{label}</Text>
     </View>
   );
-}
-
-function formatPassengerLabel(passengerId: string) {
-  return passengerId.replace('publisher-', 'Publisher ');
 }
 
 function formatOverCapacityMessage(overCapacityCount: number) {

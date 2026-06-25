@@ -13,6 +13,11 @@ export type Passenger = {
   displayName: string;
 };
 
+export type PublisherProfile = {
+  id: string;
+  name: string;
+};
+
 export type VehicleInput = {
   id: string;
   label: string;

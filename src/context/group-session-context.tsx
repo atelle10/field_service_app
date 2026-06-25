@@ -11,11 +11,14 @@ import {
 import type { VehicleInput } from '@/models/group-assignment';
 import {
   type ActiveResultsState,
+  assignPublisherNameInResultsState,
+  assignPublisherProfileInResultsState,
   completeActiveCalculation,
   createEmptyGroupSessionState,
   createLoadingResultsState,
   type GroupSessionState,
   markResultsStale,
+  restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
   type ResultsHistoryEntry,
   updateVehicleLabelInResultsState,
@@ -30,12 +33,15 @@ type BeginDistributionResult =
 
 type GroupSessionContextValue = {
   activeSession: ActiveResultsState | null;
+  assignPublisherName: (passengerId: string, name: string) => void;
+  assignPublisherProfile: (passengerId: string, publisherId: string) => void;
   beginNewDistribution: (
     publisherCount: number,
     vehicleCount: number,
   ) => BeginDistributionResult;
   hasActiveSession: boolean;
   recalculateDistribution: () => void;
+  restorePassengerDefaultLabel: (passengerId: string) => void;
   resultsHistory: ResultsHistoryEntry[];
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
@@ -59,6 +65,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       publisherCount: number,
       vehicles: VehicleInput[],
       rerunPromptVisible: boolean,
+      publisherProfiles: ActiveResultsState['publisherProfiles'],
+      passengerPublisherIds: ActiveResultsState['passengerPublisherIds'],
     ) => {
       const startedAt = Date.now();
       const remainingDelay = Math.max(
@@ -84,6 +92,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
               createdAt: new Date().toISOString(),
               id: `result-${historyId}`,
             },
+            publisherProfiles,
+            passengerPublisherIds,
           ),
         );
         timeoutRef.current = null;
@@ -93,7 +103,13 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const calculateDistribution = useCallback(
-    (publisherCount: number, vehicles: VehicleInput[], rerunPromptVisible: boolean) => {
+    (
+      publisherCount: number,
+      vehicles: VehicleInput[],
+      rerunPromptVisible: boolean,
+      publisherProfiles: ActiveResultsState['publisherProfiles'] = [],
+      passengerPublisherIds: ActiveResultsState['passengerPublisherIds'] = {},
+    ) => {
       const calculationId = calculationIdRef.current + 1;
       calculationIdRef.current = calculationId;
 
@@ -107,6 +123,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           publisherCount,
           vehicles,
           rerunPromptVisible,
+          publisherProfiles,
+          passengerPublisherIds,
         ),
       }));
       scheduleCalculationResult(
@@ -114,6 +132,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         publisherCount,
         vehicles,
         rerunPromptVisible,
+        publisherProfiles,
+        passengerPublisherIds,
       );
     },
     [scheduleCalculationResult],
@@ -216,6 +236,56 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const assignPublisherName = (passengerId: string, name: string) => {
+    setState((currentState) => {
+      if (!currentState.activeSession) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        activeSession: assignPublisherNameInResultsState(
+          currentState.activeSession,
+          passengerId,
+          name,
+        ),
+      };
+    });
+  };
+
+  const assignPublisherProfile = (passengerId: string, publisherId: string) => {
+    setState((currentState) => {
+      if (!currentState.activeSession) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        activeSession: assignPublisherProfileInResultsState(
+          currentState.activeSession,
+          passengerId,
+          publisherId,
+        ),
+      };
+    });
+  };
+
+  const restorePassengerDefaultLabel = (passengerId: string) => {
+    setState((currentState) => {
+      if (!currentState.activeSession) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        activeSession: restorePassengerDefaultLabelInResultsState(
+          currentState.activeSession,
+          passengerId,
+        ),
+      };
+    });
+  };
+
   const recalculateDistribution = () => {
     const activeSession = state.activeSession;
 
@@ -223,16 +293,25 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    calculateDistribution(activeSession.publisherCount, activeSession.vehicles, false);
+    calculateDistribution(
+      activeSession.publisherCount,
+      activeSession.vehicles,
+      false,
+      activeSession.publisherProfiles,
+      activeSession.passengerPublisherIds,
+    );
   };
 
   return (
     <GroupSessionContext.Provider
       value={{
         activeSession: state.activeSession,
+        assignPublisherName,
+        assignPublisherProfile,
         beginNewDistribution,
         hasActiveSession: state.activeSession !== null,
         recalculateDistribution,
+        restorePassengerDefaultLabel,
         resultsHistory: state.resultsHistory,
         updatePublisherCount,
         updateVehicleCapacity,

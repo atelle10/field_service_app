@@ -1,6 +1,7 @@
 import {
   DistributionStrategy,
   type DistributionResponse,
+  type PublisherProfile,
   type VehicleInput,
 } from '@/models/group-assignment';
 import {
@@ -14,6 +15,8 @@ export type ActiveResultsState = {
   errorMessage: string;
   isLoading: boolean;
   publisherCount: number;
+  publisherProfiles: PublisherProfile[];
+  passengerPublisherIds: Record<string, string>;
   rerunPromptVisible: boolean;
   staleMessage: string;
   vehicles: VehicleInput[];
@@ -23,7 +26,9 @@ export type ResultsHistoryEntry = {
   id: string;
   createdAt: string;
   distribution: DistributionResponse;
+  passengerPublisherIds: Record<string, string>;
   publisherCount: number;
+  publisherProfiles: PublisherProfile[];
   vehicles: VehicleInput[];
 };
 
@@ -61,12 +66,16 @@ export function createLoadingResultsState(
   publisherCount: number,
   vehicles: VehicleInput[],
   rerunPromptVisible: boolean,
+  publisherProfiles: PublisherProfile[] = [],
+  passengerPublisherIds: Record<string, string> = {},
 ): ActiveResultsState {
   return {
     distribution: null,
     errorMessage: '',
     isLoading: true,
+    passengerPublisherIds,
     publisherCount,
+    publisherProfiles,
     rerunPromptVisible,
     staleMessage: '',
     vehicles,
@@ -77,6 +86,8 @@ export function createCompletedResultsState(
   publisherCount: number,
   vehicles: VehicleInput[],
   rerunPromptVisible: boolean,
+  publisherProfiles: PublisherProfile[] = [],
+  passengerPublisherIds: Record<string, string> = {},
 ): ActiveResultsState {
   try {
     const distribution = createDistributionSuggestion({
@@ -89,7 +100,9 @@ export function createCompletedResultsState(
       distribution,
       errorMessage: '',
       isLoading: false,
+      passengerPublisherIds,
       publisherCount,
+      publisherProfiles,
       rerunPromptVisible,
       staleMessage: '',
       vehicles,
@@ -100,7 +113,9 @@ export function createCompletedResultsState(
       errorMessage:
         error instanceof Error ? error.message : 'Unable to generate a distribution.',
       isLoading: false,
+      passengerPublisherIds,
       publisherCount,
+      publisherProfiles,
       rerunPromptVisible: false,
       staleMessage: '',
       vehicles,
@@ -114,11 +129,15 @@ export function completeActiveCalculation(
   vehicles: VehicleInput[],
   rerunPromptVisible: boolean,
   historyMetadata: { createdAt: string; id: string },
+  publisherProfiles: PublisherProfile[] = [],
+  passengerPublisherIds: Record<string, string> = {},
 ): GroupSessionState {
   const activeSession = createCompletedResultsState(
     publisherCount,
     vehicles,
     rerunPromptVisible,
+    publisherProfiles,
+    passengerPublisherIds,
   );
   const historyEntry =
     activeSession.distribution === null
@@ -178,6 +197,86 @@ export function updateVehicleLabelInResultsState(
   };
 }
 
+export function assignPublisherNameInResultsState(
+  state: ActiveResultsState,
+  passengerId: string,
+  name: string,
+): ActiveResultsState {
+  const nextName = normalizePublisherName(name);
+
+  if (!nextName) {
+    return state;
+  }
+
+  const existingProfile = state.publisherProfiles.find(
+    (publisher) =>
+      normalizePublisherNameForCompare(publisher.name) ===
+      normalizePublisherNameForCompare(nextName),
+  );
+  const nextProfile = existingProfile ?? {
+    id: createPublisherProfileId(state.publisherProfiles.length + 1),
+    name: nextName,
+  };
+  const publisherProfiles = existingProfile
+    ? state.publisherProfiles
+    : [...state.publisherProfiles, nextProfile];
+
+  return {
+    ...state,
+    passengerPublisherIds: {
+      ...state.passengerPublisherIds,
+      [passengerId]: nextProfile.id,
+    },
+    publisherProfiles,
+  };
+}
+
+export function assignPublisherProfileInResultsState(
+  state: ActiveResultsState,
+  passengerId: string,
+  publisherId: string,
+): ActiveResultsState {
+  const publisherExists = state.publisherProfiles.some(
+    (publisher) => publisher.id === publisherId,
+  );
+
+  if (!publisherExists) {
+    return state;
+  }
+
+  return {
+    ...state,
+    passengerPublisherIds: {
+      ...state.passengerPublisherIds,
+      [passengerId]: publisherId,
+    },
+  };
+}
+
+export function restorePassengerDefaultLabelInResultsState(
+  state: ActiveResultsState,
+  passengerId: string,
+): ActiveResultsState {
+  if (!state.passengerPublisherIds[passengerId]) {
+    return state;
+  }
+
+  const { [passengerId]: _removedPublisherId, ...passengerPublisherIds } =
+    state.passengerPublisherIds;
+
+  return {
+    ...state,
+    passengerPublisherIds,
+  };
+}
+
+export function getPassengerDisplayName(state: ActiveResultsState, passengerId: string) {
+  const publisherId = state.passengerPublisherIds[passengerId];
+  const publisher = state.publisherProfiles.find((profile) => profile.id === publisherId);
+
+  return publisher?.name ?? formatPlaceholderPassengerLabel(passengerId);
+}
+
 export function resizeVehicles(vehicles: VehicleInput[], vehicleCount: number) {
   if (vehicleCount <= vehicles.length) {
     return vehicles.slice(0, vehicleCount);
@@ -185,6 +284,22 @@ export function resizeVehicles(vehicles: VehicleInput[], vehicleCount: number) {
 
   const additionalVehicles = createDefaultVehicles(vehicleCount).slice(vehicles.length);
   return [...vehicles, ...additionalVehicles];
+}
+
+function createPublisherProfileId(index: number) {
+  return `publisher-profile-${index}`;
+}
+
+function formatPlaceholderPassengerLabel(passengerId: string) {
+  return passengerId.replace('publisher-', 'Publisher ');
+}
+
+function normalizePublisherName(name: string) {
+  return name.trim().replace(/\s+/g, ' ');
+}
+
+function normalizePublisherNameForCompare(name: string) {
+  return normalizePublisherName(name).toLocaleLowerCase();
 }
 
 function createResultsHistoryEntry(
@@ -195,7 +310,9 @@ function createResultsHistoryEntry(
   return {
     id: metadata.id,
     createdAt: metadata.createdAt,
+    passengerPublisherIds: activeSession.passengerPublisherIds,
     publisherCount: activeSession.publisherCount,
+    publisherProfiles: activeSession.publisherProfiles,
     vehicles: activeSession.vehicles,
     distribution,
   };
