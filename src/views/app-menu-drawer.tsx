@@ -26,6 +26,7 @@ type AppMenuDrawerProps = {
   onClose: () => void;
   onClearCache: () => void | Promise<void>;
   onSelectHome: () => void;
+  onSelectPublishers: () => void;
   onSelectOption: () => void;
 };
 
@@ -33,6 +34,7 @@ export function AppMenuDrawer({
   onClearCache,
   onClose,
   onSelectHome,
+  onSelectPublishers,
   onSelectOption,
 }: AppMenuDrawerProps) {
   const insets = useSafeAreaInsets();
@@ -103,7 +105,9 @@ export function AppMenuDrawer({
           <Pressable
             accessibilityRole="button"
             key={label}
-            onPress={() => closeDrawer(onSelectOption)}
+            onPress={() =>
+              closeDrawer(label === 'Publishers' ? onSelectPublishers : onSelectOption)
+            }
             style={({ pressed }) => [styles.option, pressed && styles.buttonPressed]}>
             <Icon color={colors.text} size={16} strokeWidth={2.2} />
             <Text style={styles.optionText}>{label}</Text>

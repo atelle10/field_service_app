@@ -19,13 +19,16 @@ import {
 } from '@/services/persistent-storage-service';
 import {
   type ActiveResultsState,
+  addPublisherProfileToSessionState,
   assignPublisherNameInResultsState,
   assignPublisherProfileInResultsState,
   completeActiveCalculation,
   createEmptyGroupSessionState,
   createLoadingResultsState,
+  deleteAllPublisherProfilesFromSessionState,
   type GroupSessionState,
   markResultsStale,
+  removePublisherProfileFromSessionState,
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
   type ResultsHistoryEntry,
@@ -41,6 +44,7 @@ type BeginDistributionResult =
 
 type GroupSessionContextValue = {
   activeSession: ActiveResultsState | null;
+  addPublisherProfile: (name: string) => void;
   assignPublisherName: (passengerId: string, name: string) => void;
   assignPublisherProfile: (passengerId: string, publisherId: string) => void;
   beginNewDistribution: (
@@ -48,8 +52,11 @@ type GroupSessionContextValue = {
     vehicleCount: number,
   ) => BeginDistributionResult;
   clearPersistentCache: () => Promise<void>;
+  deleteAllPublisherProfiles: () => void;
   hasActiveSession: boolean;
+  publisherProfiles: ActiveResultsState['publisherProfiles'];
   recalculateDistribution: () => void;
+  removePublisherProfile: (publisherId: string) => void;
   restorePassengerDefaultLabel: (passengerId: string) => void;
   resultsHistory: ResultsHistoryEntry[];
   refreshStorageUsage: () => Promise<void>;
@@ -382,6 +389,45 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const addPublisherProfile = (name: string) => {
+    setState((currentState) => {
+      const nextState = addPublisherProfileToSessionState(currentState, name);
+
+      if (nextState !== currentState) {
+        void persistPublisherProfiles(nextState.publisherProfiles);
+      }
+
+      return nextState;
+    });
+  };
+
+  const removePublisherProfile = (publisherId: string) => {
+    setState((currentState) => {
+      const nextState = removePublisherProfileFromSessionState(
+        currentState,
+        publisherId,
+      );
+
+      if (nextState !== currentState) {
+        void persistPublisherProfiles(nextState.publisherProfiles);
+      }
+
+      return nextState;
+    });
+  };
+
+  const deleteAllPublisherProfiles = () => {
+    setState((currentState) => {
+      const nextState = deleteAllPublisherProfilesFromSessionState(currentState);
+
+      if (nextState !== currentState) {
+        void persistPublisherProfiles(nextState.publisherProfiles);
+      }
+
+      return nextState;
+    });
+  };
+
   const saveCurrentResult = async () => {
     const activeSession = state.activeSession;
 
@@ -443,12 +489,16 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     <GroupSessionContext.Provider
       value={{
         activeSession: state.activeSession,
+        addPublisherProfile,
         assignPublisherName,
         assignPublisherProfile,
         beginNewDistribution,
         clearPersistentCache,
+        deleteAllPublisherProfiles,
         hasActiveSession: state.activeSession !== null,
+        publisherProfiles: state.publisherProfiles,
         recalculateDistribution,
+        removePublisherProfile,
         refreshStorageUsage,
         restorePassengerDefaultLabel,
         resultsHistory: state.resultsHistory,

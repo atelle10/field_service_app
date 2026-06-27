@@ -273,6 +273,102 @@ export function restorePassengerDefaultLabelInResultsState(
   };
 }
 
+export function addPublisherProfileToSessionState(
+  state: GroupSessionState,
+  name: string,
+): GroupSessionState {
+  const nextName = normalizePublisherName(name);
+
+  if (!nextName) {
+    return state;
+  }
+
+  const existingProfile = state.publisherProfiles.find(
+    (publisher) =>
+      normalizePublisherNameForCompare(publisher.name) ===
+      normalizePublisherNameForCompare(nextName),
+  );
+
+  if (existingProfile) {
+    return state;
+  }
+
+  const nextProfile = {
+    id: createUniquePublisherProfileId(state.publisherProfiles),
+    name: nextName,
+  };
+  const publisherProfiles = [...state.publisherProfiles, nextProfile];
+
+  return {
+    ...state,
+    activeSession: state.activeSession
+      ? {
+          ...state.activeSession,
+          publisherProfiles,
+        }
+      : state.activeSession,
+    publisherProfiles,
+  };
+}
+
+export function removePublisherProfileFromSessionState(
+  state: GroupSessionState,
+  publisherId: string,
+): GroupSessionState {
+  const publisherExists = state.publisherProfiles.some(
+    (publisher) => publisher.id === publisherId,
+  );
+
+  if (!publisherExists) {
+    return state;
+  }
+
+  const publisherProfiles = state.publisherProfiles.filter(
+    (publisher) => publisher.id !== publisherId,
+  );
+  const activeSession = state.activeSession
+    ? {
+        ...state.activeSession,
+        passengerPublisherIds: removePublisherMappings(
+          state.activeSession.passengerPublisherIds,
+          new Set([publisherId]),
+        ),
+        publisherProfiles,
+      }
+    : state.activeSession;
+
+  return {
+    ...state,
+    activeSession,
+    publisherProfiles,
+  };
+}
+
+export function deleteAllPublisherProfilesFromSessionState(
+  state: GroupSessionState,
+): GroupSessionState {
+  if (state.publisherProfiles.length === 0) {
+    return state;
+  }
+
+  const publisherIds = new Set(state.publisherProfiles.map((publisher) => publisher.id));
+
+  return {
+    ...state,
+    activeSession: state.activeSession
+      ? {
+          ...state.activeSession,
+          passengerPublisherIds: removePublisherMappings(
+            state.activeSession.passengerPublisherIds,
+            publisherIds,
+          ),
+          publisherProfiles: [],
+        }
+      : state.activeSession,
+    publisherProfiles: [],
+  };
+}
+
 export function getPassengerDisplayName(state: ActiveResultsState, passengerId: string) {
   const publisherId = state.passengerPublisherIds[passengerId];
   const publisher = state.publisherProfiles.find((profile) => profile.id === publisherId);
@@ -293,8 +389,32 @@ function createPublisherProfileId(index: number) {
   return `publisher-profile-${index}`;
 }
 
+function createUniquePublisherProfileId(publisherProfiles: PublisherProfile[]) {
+  const existingIds = new Set(publisherProfiles.map((publisher) => publisher.id));
+  let index = publisherProfiles.length + 1;
+  let nextId = createPublisherProfileId(index);
+
+  while (existingIds.has(nextId)) {
+    index += 1;
+    nextId = createPublisherProfileId(index);
+  }
+
+  return nextId;
+}
+
 function formatPlaceholderPassengerLabel(passengerId: string) {
   return passengerId.replace('publisher-', 'Publisher ');
+}
+
+function removePublisherMappings(
+  passengerPublisherIds: Record<string, string>,
+  publisherIds: Set<string>,
+) {
+  return Object.fromEntries(
+    Object.entries(passengerPublisherIds).filter(
+      ([, publisherId]) => !publisherIds.has(publisherId),
+    ),
+  );
 }
 
 function normalizePublisherName(name: string) {

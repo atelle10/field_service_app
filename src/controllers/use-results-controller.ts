@@ -41,6 +41,10 @@ export function useResultsController() {
     router.replace('/select');
   };
 
+  const goToPublishers = () => {
+    router.navigate('/publishers');
+  };
+
   const getPassengerDisplayName = (passengerId: string) => {
     if (!activeSession) {
       return passengerId.replace('publisher-', 'Publisher ');
@@ -62,6 +66,7 @@ export function useResultsController() {
     getPassengerDisplayName,
     hasAssignedPublisherProfile,
     goHome,
+    goToPublishers,
     hasActiveSession,
     isLoading: activeSession?.isLoading ?? false,
     publisherCount: activeSession?.publisherCount ?? 1,

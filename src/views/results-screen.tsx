@@ -39,6 +39,7 @@ type ResultsScreenProps = {
   getPassengerDisplayName: (passengerId: string) => string;
   hasAssignedPublisherProfile: (passengerId: string) => boolean;
   goHome: () => void;
+  goToPublishers: () => void;
   isLoading: boolean;
   publisherCount: number;
   publisherProfiles: PublisherProfile[];
@@ -65,6 +66,7 @@ export function ResultsScreen({
   getPassengerDisplayName,
   hasAssignedPublisherProfile,
   goHome,
+  goToPublishers,
   isLoading,
   publisherCount,
   publisherProfiles,
@@ -267,6 +269,7 @@ export function ResultsScreen({
           onClose={() => setMenuOpen(false)}
           onClearCache={clearCacheWithFeedback}
           onSelectHome={goHome}
+          onSelectPublishers={goToPublishers}
           onSelectOption={() => undefined}
         />
       )}

@@ -5,13 +5,16 @@ import { describe, it } from 'node:test';
 
 import { createDefaultVehicles } from '@/services/group-assignment-service';
 import {
+  addPublisherProfileToSessionState,
   assignPublisherNameInResultsState,
   assignPublisherProfileInResultsState,
   completeActiveCalculation,
   createCompletedResultsState,
   createEmptyGroupSessionState,
+  deleteAllPublisherProfilesFromSessionState,
   getPassengerDisplayName,
   markResultsStale,
+  removePublisherProfileFromSessionState,
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
   updateVehicleLabelInResultsState,
@@ -157,6 +160,64 @@ describe('group session service', () => {
     ]);
     assert.equal(getPassengerDisplayName(restoredState, 'publisher-1'), 'Publisher 1');
     assert.equal(restoredState.rerunPromptVisible, false);
+  });
+
+  it('adds a publisher profile to session state with normalized name dedupe', () => {
+    const sessionState = createEmptyGroupSessionState();
+    const firstState = addPublisherProfileToSessionState(
+      sessionState,
+      '  Maria   Lopez ',
+    );
+    const duplicateState = addPublisherProfileToSessionState(firstState, 'maria lopez');
+
+    assert.deepEqual(firstState.publisherProfiles, [
+      { id: 'publisher-profile-1', name: 'Maria Lopez' },
+    ]);
+    assert.equal(duplicateState, firstState);
+  });
+
+  it('removes a publisher profile and clears active passenger mappings for it', () => {
+    const activeSession = assignPublisherNameInResultsState(
+      createCompletedResultsState(8, createDefaultVehicles(2), false),
+      'publisher-1',
+      'Samuel',
+    );
+    const sessionState = {
+      activeSession,
+      publisherProfiles: activeSession.publisherProfiles,
+      resultsHistory: [],
+    };
+    const nextState = removePublisherProfileFromSessionState(
+      sessionState,
+      'publisher-profile-1',
+    );
+
+    assert.deepEqual(nextState.publisherProfiles, []);
+    assert.deepEqual(nextState.activeSession?.publisherProfiles, []);
+    assert.equal(nextState.activeSession?.passengerPublisherIds['publisher-1'], undefined);
+  });
+
+  it('deletes all publisher profiles and clears active passenger mappings', () => {
+    const firstActiveSession = assignPublisherNameInResultsState(
+      createCompletedResultsState(8, createDefaultVehicles(2), false),
+      'publisher-1',
+      'Samuel',
+    );
+    const activeSession = assignPublisherNameInResultsState(
+      firstActiveSession,
+      'publisher-2',
+      'Ana',
+    );
+    const sessionState = {
+      activeSession,
+      publisherProfiles: activeSession.publisherProfiles,
+      resultsHistory: [],
+    };
+    const nextState = deleteAllPublisherProfilesFromSessionState(sessionState);
+
+    assert.deepEqual(nextState.publisherProfiles, []);
+    assert.deepEqual(nextState.activeSession?.publisherProfiles, []);
+    assert.deepEqual(nextState.activeSession?.passengerPublisherIds, {});
   });
 
   it('appends history when a calculation completes successfully', () => {
