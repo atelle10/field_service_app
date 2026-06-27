@@ -10,6 +10,14 @@ import {
 
 import type { VehicleInput } from '@/models/group-assignment';
 import {
+  clearPersistentStorage,
+  getPersistentStorageUsage,
+  loadPersistedGroupData,
+  mergePersistedPublishers,
+  savePublisherProfiles,
+  saveResultHistoryEntry,
+} from '@/services/persistent-storage-service';
+import {
   type ActiveResultsState,
   assignPublisherNameInResultsState,
   assignPublisherProfileInResultsState,
@@ -39,10 +47,14 @@ type GroupSessionContextValue = {
     publisherCount: number,
     vehicleCount: number,
   ) => BeginDistributionResult;
+  clearPersistentCache: () => Promise<void>;
   hasActiveSession: boolean;
   recalculateDistribution: () => void;
   restorePassengerDefaultLabel: (passengerId: string) => void;
   resultsHistory: ResultsHistoryEntry[];
+  refreshStorageUsage: () => Promise<void>;
+  saveCurrentResult: () => Promise<void>;
+  storageUsageBytes: number;
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
   updateVehicleCount: (vehicleCount: number) => void;
@@ -58,6 +70,36 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GroupSessionState>(() =>
     createEmptyGroupSessionState(),
   );
+  const [storageUsageBytes, setStorageUsageBytes] = useState(0);
+
+  const refreshStorageUsage = useCallback(async () => {
+    const nextStorageUsageBytes = await getPersistentStorageUsage();
+    setStorageUsageBytes(nextStorageUsageBytes);
+  }, []);
+
+  const persistPublisherProfiles = useCallback(
+    async (publisherProfiles: ActiveResultsState['publisherProfiles']) => {
+      const nextStorageUsageBytes = await savePublisherProfiles(publisherProfiles);
+      setStorageUsageBytes(nextStorageUsageBytes);
+    },
+    [],
+  );
+
+  const clearPersistentCache = useCallback(async () => {
+    const nextStorageUsageBytes = await clearPersistentStorage();
+    setStorageUsageBytes(nextStorageUsageBytes);
+    setState((currentState) => ({
+      ...currentState,
+      activeSession: currentState.activeSession
+        ? {
+            ...currentState.activeSession,
+            passengerPublisherIds: {},
+            publisherProfiles: [],
+          }
+        : currentState.activeSession,
+      publisherProfiles: [],
+    }));
+  }, []);
 
   const scheduleCalculationResult = useCallback(
     (
@@ -82,8 +124,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         const historyId = historyIdRef.current + 1;
         historyIdRef.current = historyId;
 
-        setState((currentState) =>
-          completeActiveCalculation(
+        setState((currentState) => {
+          const completedState = completeActiveCalculation(
             currentState,
             publisherCount,
             vehicles,
@@ -94,8 +136,23 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
             },
             publisherProfiles,
             passengerPublisherIds,
-          ),
-        );
+          );
+          const nextPublisherProfiles = mergePersistedPublishers(
+            completedState.publisherProfiles,
+            currentState.publisherProfiles,
+          );
+
+          return {
+            ...completedState,
+            activeSession: completedState.activeSession
+              ? {
+                  ...completedState.activeSession,
+                  publisherProfiles: nextPublisherProfiles,
+                }
+              : completedState.activeSession,
+            publisherProfiles: nextPublisherProfiles,
+          };
+        });
         timeoutRef.current = null;
       }, remainingDelay);
     },
@@ -150,6 +207,44 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  useEffect(() => {
+    let mounted = true;
+
+    loadPersistedGroupData()
+      .then((persistedData) => {
+        if (!mounted) {
+          return;
+        }
+
+        setState((currentState) => ({
+          ...currentState,
+          activeSession: currentState.activeSession
+            ? {
+                ...currentState.activeSession,
+                publisherProfiles: mergePersistedPublishers(
+                  currentState.activeSession.publisherProfiles,
+                  persistedData.publisherProfiles,
+                ),
+              }
+            : currentState.activeSession,
+          publisherProfiles: mergePersistedPublishers(
+            currentState.publisherProfiles,
+            persistedData.publisherProfiles,
+          ),
+        }));
+        setStorageUsageBytes(persistedData.storageUsageBytes);
+      })
+      .catch(() => {
+        if (mounted) {
+          setStorageUsageBytes(0);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const beginNewDistribution = (
     publisherCount: number,
     vehicleCount: number,
@@ -160,7 +255,12 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       return { ok: false, errorMessage: validationResult.errorMessage };
     }
 
-    calculateDistribution(publisherCount, validationResult.vehicles, false);
+    calculateDistribution(
+      publisherCount,
+      validationResult.vehicles,
+      false,
+      state.publisherProfiles,
+    );
     return { ok: true };
   };
 
@@ -242,13 +342,25 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         return currentState;
       }
 
+      const activeSession = assignPublisherNameInResultsState(
+        currentState.activeSession,
+        passengerId,
+        name,
+      );
+      const publisherProfiles = mergePersistedPublishers(
+        currentState.publisherProfiles,
+        activeSession.publisherProfiles,
+      );
+
+      void persistPublisherProfiles(publisherProfiles);
+
       return {
         ...currentState,
-        activeSession: assignPublisherNameInResultsState(
-          currentState.activeSession,
-          passengerId,
-          name,
-        ),
+        activeSession: {
+          ...activeSession,
+          publisherProfiles,
+        },
+        publisherProfiles,
       };
     });
   };
@@ -268,6 +380,31 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         ),
       };
     });
+  };
+
+  const saveCurrentResult = async () => {
+    const activeSession = state.activeSession;
+
+    if (!activeSession?.distribution) {
+      return;
+    }
+
+    const historyId = historyIdRef.current + 1;
+    historyIdRef.current = historyId;
+    const createdAt = new Date().toISOString();
+
+    const entry: ResultsHistoryEntry = {
+      id: `saved-result-${Date.now()}-${historyId}`,
+      createdAt,
+      distribution: activeSession.distribution,
+      passengerPublisherIds: activeSession.passengerPublisherIds,
+      publisherCount: activeSession.publisherCount,
+      publisherProfiles: activeSession.publisherProfiles,
+      vehicles: activeSession.vehicles,
+    };
+
+    const nextStorageUsageBytes = await saveResultHistoryEntry(entry);
+    setStorageUsageBytes(nextStorageUsageBytes);
   };
 
   const restorePassengerDefaultLabel = (passengerId: string) => {
@@ -309,10 +446,14 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         assignPublisherName,
         assignPublisherProfile,
         beginNewDistribution,
+        clearPersistentCache,
         hasActiveSession: state.activeSession !== null,
         recalculateDistribution,
+        refreshStorageUsage,
         restorePassengerDefaultLabel,
         resultsHistory: state.resultsHistory,
+        saveCurrentResult,
+        storageUsageBytes,
         updatePublisherCount,
         updateVehicleCapacity,
         updateVehicleCount,

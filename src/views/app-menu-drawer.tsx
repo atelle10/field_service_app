@@ -24,11 +24,17 @@ const menuTextSize = 13;
 
 type AppMenuDrawerProps = {
   onClose: () => void;
+  onClearCache: () => void | Promise<void>;
   onSelectHome: () => void;
   onSelectOption: () => void;
 };
 
-export function AppMenuDrawer({ onClose, onSelectHome, onSelectOption }: AppMenuDrawerProps) {
+export function AppMenuDrawer({
+  onClearCache,
+  onClose,
+  onSelectHome,
+  onSelectOption,
+}: AppMenuDrawerProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [translateProgress] = useState(() => new Animated.Value(-1));
@@ -104,6 +110,19 @@ export function AppMenuDrawer({ onClose, onSelectHome, onSelectOption }: AppMenu
           </Pressable>
         ))}
       </View>
+
+      <View style={[styles.drawerFooter, { paddingBottom: insets.bottom + 16 }]}>
+        <Pressable
+          accessibilityLabel="Clear cached app data"
+          accessibilityRole="button"
+          onPress={() => closeDrawer(onClearCache)}
+          style={({ pressed }) => [
+            styles.clearCacheButton,
+            pressed && styles.buttonPressed,
+          ]}>
+          <Text style={styles.clearCacheButtonText}>Clear Cache</Text>
+        </Pressable>
+      </View>
     </Animated.View>
   );
 }
@@ -159,6 +178,26 @@ const styles = StyleSheet.create({
   optionText: {
     color: colors.text,
     fontSize: menuTextSize,
+    fontWeight: '700',
+  },
+  drawerFooter: {
+    marginTop: 'auto',
+    alignItems: 'flex-end',
+  },
+  clearCacheButton: {
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.dangerText,
+    borderRadius: radii.small,
+    backgroundColor: colors.dangerBackground,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  clearCacheButtonText: {
+    color: colors.dangerText,
+    fontSize: 12,
     fontWeight: '700',
   },
   buttonPressed: {

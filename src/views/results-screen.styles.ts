@@ -156,6 +156,32 @@ export const styles = StyleSheet.create({
   recalculateButtonTextActive: {
     color: colors.mint,
   },
+  storageFooter: {
+    gap: 10,
+  },
+  saveResultButton: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-end',
+    borderWidth: 1,
+    borderColor: colors.mint,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  saveResultButtonText: {
+    color: colors.mint,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  storageUsageText: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   loadingScreen: {
     flex: 1,
     alignItems: 'center',
@@ -587,6 +613,72 @@ export const styles = StyleSheet.create({
   },
   publisherModalDisabledButtonText: {
     color: colors.textSubtle,
+  },
+  statusModalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 17, 23, 0.78)',
+    padding: 24,
+  },
+  statusModalCard: {
+    width: '100%',
+    maxWidth: 340,
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: radii.medium,
+    backgroundColor: colors.surfaceStrong,
+    padding: 18,
+  },
+  statusModalCardSuccess: {
+    borderColor: colors.mint,
+  },
+  statusModalCardError: {
+    borderColor: colors.dangerText,
+    backgroundColor: colors.dangerBackground,
+  },
+  statusModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  statusModalTitleSuccess: {
+    color: colors.mint,
+  },
+  statusModalTitleError: {
+    color: colors.dangerText,
+  },
+  statusModalMessage: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  statusModalButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-end',
+    borderWidth: 1,
+    borderRadius: radii.small,
+    paddingHorizontal: 18,
+  },
+  statusModalButtonSuccess: {
+    borderColor: colors.mint,
+    backgroundColor: colors.mint,
+  },
+  statusModalButtonError: {
+    borderColor: colors.dangerText,
+    backgroundColor: colors.surfaceStrong,
+  },
+  statusModalButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  statusModalButtonTextSuccess: {
+    color: colors.background,
+  },
+  statusModalButtonTextError: {
+    color: colors.dangerText,
   },
   buttonPressed: {
     opacity: 0.82,

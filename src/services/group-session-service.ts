@@ -34,6 +34,7 @@ export type ResultsHistoryEntry = {
 
 export type GroupSessionState = {
   activeSession: ActiveResultsState | null;
+  publisherProfiles: PublisherProfile[];
   resultsHistory: ResultsHistoryEntry[];
 };
 
@@ -44,6 +45,7 @@ export type DistributionValidationResult =
 export function createEmptyGroupSessionState(): GroupSessionState {
   return {
     activeSession: null,
+    publisherProfiles: [],
     resultsHistory: [],
   };
 }
@@ -150,6 +152,7 @@ export function completeActiveCalculation(
 
   return {
     activeSession,
+    publisherProfiles: activeSession.publisherProfiles,
     resultsHistory: historyEntry
       ? [...sessionState.resultsHistory, historyEntry]
       : sessionState.resultsHistory,
