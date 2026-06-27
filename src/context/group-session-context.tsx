@@ -42,6 +42,12 @@ type BeginDistributionResult =
   | { ok: true }
   | { ok: false; errorMessage: string };
 
+export type StorageActionFeedback = {
+  message: string;
+  title: string;
+  tone: 'error' | 'success';
+};
+
 type GroupSessionContextValue = {
   activeSession: ActiveResultsState | null;
   addPublisherProfile: (name: string) => void;
@@ -53,6 +59,7 @@ type GroupSessionContextValue = {
   ) => BeginDistributionResult;
   clearPersistentCache: () => Promise<void>;
   deleteAllPublisherProfiles: () => void;
+  dismissStorageActionFeedback: () => void;
   hasActiveSession: boolean;
   publisherProfiles: ActiveResultsState['publisherProfiles'];
   recalculateDistribution: () => void;
@@ -61,6 +68,7 @@ type GroupSessionContextValue = {
   resultsHistory: ResultsHistoryEntry[];
   refreshStorageUsage: () => Promise<void>;
   saveCurrentResult: () => Promise<void>;
+  storageActionFeedback: StorageActionFeedback | null;
   storageUsageBytes: number;
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
@@ -78,6 +86,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     createEmptyGroupSessionState(),
   );
   const [storageUsageBytes, setStorageUsageBytes] = useState(0);
+  const [storageActionFeedback, setStorageActionFeedback] =
+    useState<StorageActionFeedback | null>(null);
 
   const refreshStorageUsage = useCallback(async () => {
     const nextStorageUsageBytes = await getPersistentStorageUsage();
@@ -93,19 +103,36 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const clearPersistentCache = useCallback(async () => {
-    const nextStorageUsageBytes = await clearPersistentStorage();
-    setStorageUsageBytes(nextStorageUsageBytes);
-    setState((currentState) => ({
-      ...currentState,
-      activeSession: currentState.activeSession
-        ? {
-            ...currentState.activeSession,
-            passengerPublisherIds: {},
-            publisherProfiles: [],
-          }
-        : currentState.activeSession,
-      publisherProfiles: [],
-    }));
+    try {
+      const nextStorageUsageBytes = await clearPersistentStorage();
+      setStorageUsageBytes(nextStorageUsageBytes);
+      setState((currentState) => ({
+        ...currentState,
+        activeSession: currentState.activeSession
+          ? {
+              ...currentState.activeSession,
+              passengerPublisherIds: {},
+              publisherProfiles: [],
+            }
+          : currentState.activeSession,
+        publisherProfiles: [],
+      }));
+      setStorageActionFeedback({
+        message: 'Stored publishers and saved results were removed from this device.',
+        title: 'Cache cleared',
+        tone: 'success',
+      });
+    } catch (error) {
+      setStorageActionFeedback({
+        message: getStorageActionErrorMessage(error),
+        title: 'Cache could not be cleared',
+        tone: 'error',
+      });
+    }
+  }, []);
+
+  const dismissStorageActionFeedback = useCallback(() => {
+    setStorageActionFeedback(null);
   }, []);
 
   const scheduleCalculationResult = useCallback(
@@ -449,8 +476,21 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       vehicles: activeSession.vehicles,
     };
 
-    const nextStorageUsageBytes = await saveResultHistoryEntry(entry);
-    setStorageUsageBytes(nextStorageUsageBytes);
+    try {
+      const nextStorageUsageBytes = await saveResultHistoryEntry(entry);
+      setStorageUsageBytes(nextStorageUsageBytes);
+      setStorageActionFeedback({
+        message: 'This distribution result was saved on this device.',
+        title: 'Result saved',
+        tone: 'success',
+      });
+    } catch (error) {
+      setStorageActionFeedback({
+        message: getStorageActionErrorMessage(error),
+        title: 'Result could not be saved',
+        tone: 'error',
+      });
+    }
   };
 
   const restorePassengerDefaultLabel = (passengerId: string) => {
@@ -495,6 +535,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         beginNewDistribution,
         clearPersistentCache,
         deleteAllPublisherProfiles,
+        dismissStorageActionFeedback,
         hasActiveSession: state.activeSession !== null,
         publisherProfiles: state.publisherProfiles,
         recalculateDistribution,
@@ -503,6 +544,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         restorePassengerDefaultLabel,
         resultsHistory: state.resultsHistory,
         saveCurrentResult,
+        storageActionFeedback,
         storageUsageBytes,
         updatePublisherCount,
         updateVehicleCapacity,
@@ -522,4 +564,12 @@ export function useGroupSession() {
   }
 
   return context;
+}
+
+function getStorageActionErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Please try again.';
 }

@@ -24,11 +24,6 @@ import { AppMenuDrawer } from '@/views/app-menu-drawer';
 import { styles } from '@/views/results-screen.styles';
 
 type ActiveCountPicker = 'publishers' | 'vehicles' | null;
-type StorageActionFeedback = {
-  message: string;
-  title: string;
-  tone: 'error' | 'success';
-};
 
 type ResultsScreenProps = {
   assignPublisherName: (passengerId: string, name: string) => void;
@@ -90,8 +85,6 @@ export function ResultsScreen({
   const [publisherNameInput, setPublisherNameInput] = useState('');
   const [recalculatePulse] = useState(() => new Animated.Value(1));
   const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
-  const [storageActionFeedback, setStorageActionFeedback] =
-    useState<StorageActionFeedback | null>(null);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
@@ -217,40 +210,6 @@ export function ResultsScreen({
     closePublisherEditor();
   };
 
-  const clearCacheWithFeedback = async () => {
-    try {
-      await clearPersistentCache();
-      setStorageActionFeedback({
-        message: 'Stored publishers and saved results were removed from this device.',
-        title: 'Cache cleared',
-        tone: 'success',
-      });
-    } catch (error) {
-      setStorageActionFeedback({
-        message: getStorageActionErrorMessage(error),
-        title: 'Cache could not be cleared',
-        tone: 'error',
-      });
-    }
-  };
-
-  const saveCurrentResultWithFeedback = async () => {
-    try {
-      await saveCurrentResult();
-      setStorageActionFeedback({
-        message: 'This distribution result was saved on this device.',
-        title: 'Result saved',
-        tone: 'success',
-      });
-    } catch (error) {
-      setStorageActionFeedback({
-        message: getStorageActionErrorMessage(error),
-        title: 'Result could not be saved',
-        tone: 'error',
-      });
-    }
-  };
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -267,17 +226,13 @@ export function ResultsScreen({
       {menuOpen && (
         <AppMenuDrawer
           onClose={() => setMenuOpen(false)}
-          onClearCache={clearCacheWithFeedback}
+          onClearCache={clearPersistentCache}
           onSelectHome={goHome}
           onSelectPublishers={goToPublishers}
           onSelectOption={() => undefined}
+          storageUsageBytes={storageUsageBytes}
         />
       )}
-
-      <StorageActionFeedbackModal
-        feedback={storageActionFeedback}
-        onClose={() => setStorageActionFeedback(null)}
-      />
 
       <PublisherEditorModal
         canRestoreDefault={
@@ -636,7 +591,7 @@ export function ResultsScreen({
             {distribution && (
               <Pressable
                 accessibilityRole="button"
-                onPress={saveCurrentResultWithFeedback}
+                onPress={saveCurrentResult}
                 style={({ pressed }) => [
                   styles.saveResultButton,
                   pressed && styles.buttonPressed,
@@ -644,68 +599,10 @@ export function ResultsScreen({
                 <Text style={styles.saveResultButtonText}>Save Result</Text>
               </Pressable>
             )}
-
-            <Text style={styles.storageUsageText}>
-              Stored data: {formatStorageUsage(storageUsageBytes)}
-            </Text>
           </View>
         </ScrollView>
       </View>
     </SafeAreaView>
-  );
-}
-
-function StorageActionFeedbackModal({
-  feedback,
-  onClose,
-}: {
-  feedback: StorageActionFeedback | null;
-  onClose: () => void;
-}) {
-  const isError = feedback?.tone === 'error';
-
-  return (
-    <Modal
-      animationType="fade"
-      onRequestClose={onClose}
-      transparent
-      visible={feedback !== null}>
-      <View style={styles.statusModalOverlay}>
-        <View
-          style={[
-            styles.statusModalCard,
-            isError ? styles.statusModalCardError : styles.statusModalCardSuccess,
-          ]}>
-          <Text
-            style={[
-              styles.statusModalTitle,
-              isError ? styles.statusModalTitleError : styles.statusModalTitleSuccess,
-            ]}>
-            {feedback?.title}
-          </Text>
-          <Text style={styles.statusModalMessage}>{feedback?.message}</Text>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClose}
-            style={({ pressed }) => [
-              styles.statusModalButton,
-              isError ? styles.statusModalButtonError : styles.statusModalButtonSuccess,
-              pressed && styles.buttonPressed,
-            ]}>
-            <Text
-              style={[
-                styles.statusModalButtonText,
-                isError
-                  ? styles.statusModalButtonTextError
-                  : styles.statusModalButtonTextSuccess,
-              ]}>
-              OK
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
   );
 }
 
@@ -922,20 +819,4 @@ function SummaryItem({
 function formatOverCapacityMessage(overCapacityCount: number) {
   const publisherLabel = overCapacityCount === 1 ? 'publisher' : 'publishers';
   return `${overCapacityCount} assigned ${publisherLabel} over capacity. Increase seats or press Recalculate.`;
-}
-
-function formatStorageUsage(bytes: number) {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  return `${(bytes / 1024).toFixed(1)} KB`;
-}
-
-function getStorageActionErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return 'Please try again.';
 }

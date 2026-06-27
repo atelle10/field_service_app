@@ -28,6 +28,7 @@ type AppMenuDrawerProps = {
   onSelectHome: () => void;
   onSelectPublishers: () => void;
   onSelectOption: () => void;
+  storageUsageBytes: number;
 };
 
 export function AppMenuDrawer({
@@ -36,6 +37,7 @@ export function AppMenuDrawer({
   onSelectHome,
   onSelectPublishers,
   onSelectOption,
+  storageUsageBytes,
 }: AppMenuDrawerProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -116,16 +118,22 @@ export function AppMenuDrawer({
       </View>
 
       <View style={[styles.drawerFooter, { paddingBottom: insets.bottom + 16 }]}>
-        <Pressable
-          accessibilityLabel="Clear cached app data"
-          accessibilityRole="button"
-          onPress={() => closeDrawer(onClearCache)}
-          style={({ pressed }) => [
-            styles.clearCacheButton,
-            pressed && styles.buttonPressed,
-          ]}>
-          <Text style={styles.clearCacheButtonText}>Clear Cache</Text>
-        </Pressable>
+        <View style={styles.drawerFooterRow}>
+          <Text style={styles.storageUsageText}>
+            Stored data: {formatStorageUsage(storageUsageBytes)}
+          </Text>
+
+          <Pressable
+            accessibilityLabel="Clear cached app data"
+            accessibilityRole="button"
+            onPress={() => closeDrawer(onClearCache)}
+            style={({ pressed }) => [
+              styles.clearCacheButton,
+              pressed && styles.buttonPressed,
+            ]}>
+            <Text style={styles.clearCacheButtonText}>Clear Cache</Text>
+          </Pressable>
+        </View>
       </View>
     </Animated.View>
   );
@@ -186,9 +194,15 @@ const styles = StyleSheet.create({
   },
   drawerFooter: {
     marginTop: 'auto',
-    alignItems: 'flex-end',
+  },
+  drawerFooterRow: {
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   clearCacheButton: {
+    position: 'absolute',
+    right: 0,
     minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
@@ -204,7 +218,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  storageUsageText: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   buttonPressed: {
     opacity: 0.82,
   },
 });
+
+function formatStorageUsage(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}

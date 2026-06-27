@@ -16,6 +16,7 @@ type PublishersScreenProps = {
   goToPublishers: () => void;
   publisherProfiles: PublisherProfile[];
   removePublisherProfile: (publisherId: string) => void;
+  storageUsageBytes: number;
 };
 
 export function PublishersScreen({
@@ -26,6 +27,7 @@ export function PublishersScreen({
   goToPublishers,
   publisherProfiles,
   removePublisherProfile,
+  storageUsageBytes,
 }: PublishersScreenProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newPublisherName, setNewPublisherName] = useState('');
@@ -61,6 +63,7 @@ export function PublishersScreen({
           onSelectHome={goHome}
           onSelectPublishers={goToPublishers}
           onSelectOption={() => undefined}
+          storageUsageBytes={storageUsageBytes}
         />
       )}
 

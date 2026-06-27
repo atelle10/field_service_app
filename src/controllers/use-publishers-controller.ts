@@ -10,6 +10,7 @@ export function usePublishersController() {
     hasActiveSession,
     publisherProfiles,
     removePublisherProfile,
+    storageUsageBytes,
   } = useGroupSession();
 
   const goHome = () => {
@@ -33,5 +34,6 @@ export function usePublishersController() {
     goToPublishers,
     publisherProfiles,
     removePublisherProfile,
+    storageUsageBytes,
   };
 }
