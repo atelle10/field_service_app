@@ -4,11 +4,11 @@
     "slug": "field_service_app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./src/assets/field_service_assistant_logo_3.png",
     "scheme": "fieldserviceapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./src/assets/field_service_assistant_1024.png",
       "bundleIdentifier": "field-service",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
