@@ -1,17 +1,34 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Check, Menu, Pencil, RefreshCcw, X } from 'lucide-react-native';
 import {
   ActivityIndicator,
-  Animated,
+  Animated as RNAnimated,
   Modal,
   Pressable,
   ScrollView,
+  type StyleProp,
   Text,
   TextInput,
   View,
+  type ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import Reanimated, {
+  interpolateColor,
+  runOnJS,
+  type SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -34,8 +51,6 @@ type DragState = {
   passengerId: string;
   sourceVehicleId: string;
   targetVehicleId: string | null;
-  x: number;
-  y: number;
 };
 
 type VehicleDropZone = {
@@ -46,6 +61,45 @@ type VehicleDropZone = {
   width: number;
   height: number;
 };
+
+const subtleSpringConfig = {
+  damping: 18,
+  mass: 0.7,
+  stiffness: 180,
+};
+
+function setSharedValue(sharedValue: SharedValue<number>, value: number) {
+  'worklet';
+  sharedValue.value = value;
+}
+
+function springSharedValue(sharedValue: SharedValue<number>, value: number) {
+  'worklet';
+  sharedValue.value = withSpring(value, subtleSpringConfig);
+}
+
+function timeSharedValue(
+  sharedValue: SharedValue<number>,
+  value: number,
+  duration: number,
+) {
+  'worklet';
+  sharedValue.value = withTiming(value, { duration });
+}
+
+function timeSharedValueWithCompletion(
+  sharedValue: SharedValue<number>,
+  value: number,
+  duration: number,
+  onComplete: () => void,
+) {
+  'worklet';
+  sharedValue.value = withTiming(value, { duration }, (finished) => {
+    if (finished) {
+      runOnJS(onComplete)();
+    }
+  });
+}
 
 type ResultsScreenProps = {
   assignPublisherName: (passengerId: string, name: string) => void;
@@ -113,7 +167,7 @@ export function ResultsScreen({
   const [editingVehicleLabel, setEditingVehicleLabel] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [publisherNameInput, setPublisherNameInput] = useState('');
-  const [recalculatePulse] = useState(() => new Animated.Value(1));
+  const [recalculatePulse] = useState(() => new RNAnimated.Value(1));
   const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
   const [summaryExpanded, setSummaryExpanded] = useState(
     preferences.summaryStartsExpanded,
@@ -123,6 +177,13 @@ export function ResultsScreen({
   const [suppressChipPress, setSuppressChipPress] = useState(false);
   const vehicleCardRefs = useRef<Record<string, View | null>>({});
   const vehicleDropZonesRef = useRef<VehicleDropZone[]>([]);
+  const dragOpacity = useSharedValue(0);
+  const dragOriginX = useSharedValue(0);
+  const dragOriginY = useSharedValue(0);
+  const dragScale = useSharedValue(0.96);
+  const dragTone = useSharedValue(0);
+  const dragX = useSharedValue(0);
+  const dragY = useSharedValue(0);
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
   const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
@@ -137,6 +198,22 @@ export function ResultsScreen({
         return (assignment?.passengerIds.length ?? 0) > 0;
       });
 
+  const draggedSeatOverlayStyle = useAnimatedStyle(() => ({
+    opacity: dragOpacity.value,
+    transform: [
+      { translateX: dragX.value - 58 },
+      { translateY: dragY.value - 22 },
+      { scale: dragScale.value },
+    ],
+  }));
+  const draggedSeatStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      dragTone.value,
+      [-1, 0, 1],
+      [colors.dangerText, colors.purple, colors.mint],
+    ),
+  }));
+
   useEffect(() => {
     if (!rerunPromptVisible) {
       recalculatePulse.stopAnimation();
@@ -144,14 +221,14 @@ export function ResultsScreen({
       return;
     }
 
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(recalculatePulse, {
+    const pulseAnimation = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(recalculatePulse, {
           toValue: 1.04,
           duration: 700,
           useNativeDriver: true,
         }),
-        Animated.timing(recalculatePulse, {
+        RNAnimated.timing(recalculatePulse, {
           toValue: 1,
           duration: 700,
           useNativeDriver: true,
@@ -246,17 +323,31 @@ export function ResultsScreen({
       setDropWarning('');
       setSuppressChipPress(true);
       measureVehicleDropZones();
+      timeSharedValue(dragOpacity, 1, 90);
+      springSharedValue(dragScale, 1.06);
+      timeSharedValue(dragTone, 0, 120);
+      setSharedValue(dragOriginX, x);
+      setSharedValue(dragOriginY, y);
+      setSharedValue(dragX, x);
+      setSharedValue(dragY, y);
       setDragState({
         canDrop: false,
         label,
         passengerId,
         sourceVehicleId,
         targetVehicleId: null,
-        x,
-        y,
       });
     },
-    [measureVehicleDropZones],
+    [
+      dragOpacity,
+      dragOriginX,
+      dragOriginY,
+      dragScale,
+      dragTone,
+      dragX,
+      dragY,
+      measureVehicleDropZones,
+    ],
   );
 
   const handleDragMove = useCallback(
@@ -269,48 +360,88 @@ export function ResultsScreen({
         const dropZone = findDropZone(x, y);
         const isSameVehicle = dropZone?.vehicleId === currentDragState.sourceVehicleId;
         const canDrop = Boolean(dropZone && dropZone.canAccept && !isSameVehicle);
+        const targetVehicleId = dropZone?.vehicleId ?? null;
+
+        timeSharedValue(dragTone, canDrop ? 1 : targetVehicleId ? -1 : 0, 120);
+
+        if (
+          currentDragState.canDrop === canDrop &&
+          currentDragState.targetVehicleId === targetVehicleId
+        ) {
+          return currentDragState;
+        }
 
         return {
           ...currentDragState,
           canDrop,
-          targetVehicleId: dropZone?.vehicleId ?? null,
-          x,
-          y,
+          targetVehicleId,
         };
       });
     },
-    [findDropZone],
+    [dragTone, findDropZone],
   );
 
   const handleDragEnd = useCallback(
     (passengerId: string, sourceVehicleId: string, x: number, y: number) => {
       const dropZone = findDropZone(x, y);
+      const clearDragState = () => setDragState(null);
+
+      const finishInvalidDrop = (message?: string) => {
+        springSharedValue(dragX, dragOriginX.value);
+        springSharedValue(dragY, dragOriginY.value);
+        springSharedValue(dragScale, 0.98);
+        timeSharedValue(dragTone, 0, 120);
+        timeSharedValueWithCompletion(dragOpacity, 0, 180, () => {
+          clearDragState();
+
+          if (message) {
+            showDropWarning(message);
+          }
+        });
+      };
 
       if (!dropZone) {
-        showDropWarning('Drop on a vehicle with open seats.');
-        setDragState(null);
+        finishInvalidDrop('Drop on a vehicle with open seats.');
         return;
       }
 
       if (dropZone.vehicleId === sourceVehicleId) {
-        setDragState(null);
+        finishInvalidDrop();
         return;
       }
 
       if (!dropZone.canAccept) {
-        showDropWarning('Vehicle is full.');
-        setDragState(null);
+        finishInvalidDrop('Vehicle is full.');
         return;
       }
 
-      movePassengerToVehicle(passengerId, dropZone.vehicleId);
-      setDragState(null);
+      springSharedValue(dragX, dropZone.x + dropZone.width / 2);
+      springSharedValue(
+        dragY,
+        dropZone.y + Math.min(dropZone.height / 2, 96),
+      );
+      springSharedValue(dragScale, 1.02);
+      timeSharedValue(dragTone, 0, 120);
+      timeSharedValueWithCompletion(dragOpacity, 0, 170, () => {
+        movePassengerToVehicle(passengerId, dropZone.vehicleId);
+        clearDragState();
+      });
     },
-    [findDropZone, movePassengerToVehicle, showDropWarning],
+    [
+      dragOpacity,
+      dragOriginX,
+      dragOriginY,
+      dragScale,
+      dragTone,
+      dragX,
+      dragY,
+      findDropZone,
+      movePassengerToVehicle,
+      showDropWarning,
+    ],
   );
 
   const handleDragFinalize = useCallback(() => {
-    setDragState(null);
     setSuppressChipPress(true);
 
     if (suppressChipPressTimeoutRef.current) {
@@ -541,7 +672,7 @@ export function ResultsScreen({
               <Text style={styles.actionButtonText}>Start Over</Text>
             </Pressable>
 
-            <Animated.View style={{ transform: [{ scale: recalculatePulse }] }}>
+            <RNAnimated.View style={{ transform: [{ scale: recalculatePulse }] }}>
               <Pressable
                 accessibilityRole="button"
                 disabled={!rerunPromptVisible}
@@ -564,7 +695,7 @@ export function ResultsScreen({
                   Recalculate
                 </Text>
               </Pressable>
-            </Animated.View>
+            </RNAnimated.View>
           </View>
 
           {!!errorMessage && (
@@ -627,7 +758,10 @@ export function ResultsScreen({
               const isEditingVehicleLabel = editingVehicleId === vehicle.id;
 
               return (
-                <View
+                <AnimatedVehicleCard
+                  canDrop={dragState?.canDrop ?? false}
+                  isOverCapacity={isOverCapacity}
+                  isDropTarget={dragState?.targetVehicleId === vehicle.id}
                   key={vehicle.id}
                   ref={(node) => {
                     vehicleCardRefs.current[vehicle.id] = node;
@@ -638,12 +772,6 @@ export function ResultsScreen({
                       ? styles.vehicleCardInUse
                       : styles.vehicleCardUnused,
                     isOverCapacity && styles.vehicleCardOverCapacity,
-                    dragState?.targetVehicleId === vehicle.id &&
-                      dragState.canDrop &&
-                      styles.vehicleCardDropTarget,
-                    dragState?.targetVehicleId === vehicle.id &&
-                      !dragState.canDrop &&
-                      styles.vehicleCardDropBlocked,
                   ]}>
                   <View style={styles.vehicleHeader}>
                     <View style={styles.vehicleTitlePanel}>
@@ -773,19 +901,23 @@ export function ResultsScreen({
                       const passengerLabel = getPassengerDisplayName(passengerId);
 
                       return (
-                      <DraggablePublisherChip
-                        isDragging={dragState?.passengerId === passengerId}
-                        isOverCapacity={isOverCapacity}
-                        key={passengerId}
-                        label={passengerLabel}
-                        onDragEnd={handleDragEnd}
-                        onDragFinalize={handleDragFinalize}
-                        onDragMove={handleDragMove}
-                        onDragStart={handleDragStart}
-                        onPress={() => openPublisherEditor(passengerId)}
-                        passengerId={passengerId}
-                        vehicleId={vehicle.id}
-                      />
+                        <DraggablePublisherChip
+                          dragOpacity={dragOpacity}
+                          dragScale={dragScale}
+                          dragX={dragX}
+                          dragY={dragY}
+                          isDragging={dragState?.passengerId === passengerId}
+                          isOverCapacity={isOverCapacity}
+                          key={passengerId}
+                          label={passengerLabel}
+                          onDragEnd={handleDragEnd}
+                          onDragFinalize={handleDragFinalize}
+                          onDragMove={handleDragMove}
+                          onDragStart={handleDragStart}
+                          onPress={() => openPublisherEditor(passengerId)}
+                          passengerId={passengerId}
+                          vehicleId={vehicle.id}
+                        />
                       );
                     })}
 
@@ -799,7 +931,7 @@ export function ResultsScreen({
                       <Text style={styles.emptySeatText}>No seats available</Text>
                     )}
                   </View>
-                </View>
+                </AnimatedVehicleCard>
               );
             })}
           </View>
@@ -820,31 +952,81 @@ export function ResultsScreen({
         </ScrollView>
 
         {dragState && (
-          <View
+          <Reanimated.View
             pointerEvents="none"
-            style={[
-              styles.draggedSeatOverlay,
-              {
-                left: dragState.x - 58,
-                top: dragState.y - 22,
-              },
-            ]}>
-            <View
-              style={[
-                styles.occupiedSeat,
-                styles.draggedSeat,
-                dragState.canDrop && styles.draggedSeatCanDrop,
-              ]}>
+            style={[styles.draggedSeatOverlay, draggedSeatOverlayStyle]}>
+            <Reanimated.View
+              style={[styles.occupiedSeat, styles.draggedSeat, draggedSeatStyle]}>
               <Text style={styles.occupiedSeatText}>{dragState.label}</Text>
-            </View>
-          </View>
+            </Reanimated.View>
+          </Reanimated.View>
         )}
       </View>
     </SafeAreaView>
   );
 }
 
+const AnimatedVehicleCard = forwardRef<
+  View,
+  {
+    canDrop: boolean;
+    children: ReactNode;
+    isDropTarget: boolean;
+    isOverCapacity: boolean;
+    style: StyleProp<ViewStyle>;
+  }
+>(function AnimatedVehicleCard(
+  { canDrop, children, isDropTarget, isOverCapacity, style },
+  ref,
+) {
+  const highlightProgress = useSharedValue(0);
+  const highlightTone = useSharedValue(0);
+
+  useEffect(() => {
+    highlightProgress.value = withTiming(isDropTarget ? 1 : 0, { duration: 140 });
+    highlightTone.value = withTiming(isDropTarget ? (canDrop ? 1 : -1) : 0, {
+      duration: 140,
+    });
+  }, [canDrop, highlightProgress, highlightTone, isDropTarget]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const baseBackground = isOverCapacity
+      ? colors.dangerBackground
+      : colors.surfaceStrong;
+    const baseBorder = isOverCapacity ? colors.dangerText : colors.border;
+
+    return {
+      backgroundColor: interpolateColor(
+        highlightTone.value,
+        [-1, 0, 1],
+        [colors.dangerBackground, baseBackground, colors.surface],
+      ),
+      borderColor: interpolateColor(
+        highlightTone.value,
+        [-1, 0, 1],
+        [colors.dangerText, baseBorder, colors.mint],
+      ),
+      borderLeftColor: interpolateColor(
+        highlightTone.value,
+        [-1, 0, 1],
+        [colors.dangerText, baseBorder, colors.mint],
+      ),
+      transform: [{ scale: 1 + highlightProgress.value * 0.01 }],
+    };
+  });
+
+  return (
+    <Reanimated.View ref={ref} style={[style, animatedStyle]}>
+      {children}
+    </Reanimated.View>
+  );
+});
+
 function DraggablePublisherChip({
+  dragOpacity,
+  dragScale,
+  dragX,
+  dragY,
   isDragging,
   isOverCapacity,
   label,
@@ -856,6 +1038,10 @@ function DraggablePublisherChip({
   passengerId,
   vehicleId,
 }: {
+  dragOpacity: SharedValue<number>;
+  dragScale: SharedValue<number>;
+  dragX: SharedValue<number>;
+  dragY: SharedValue<number>;
   isDragging: boolean;
   isOverCapacity: boolean;
   label: string;
@@ -876,6 +1062,10 @@ function DraggablePublisherChip({
   const dragGesture = Gesture.Pan()
     .activateAfterLongPress(240)
     .onStart((event) => {
+      setSharedValue(dragX, event.absoluteX);
+      setSharedValue(dragY, event.absoluteY);
+      timeSharedValue(dragOpacity, 1, 90);
+      springSharedValue(dragScale, 1.06);
       runOnJS(onDragStart)(
         passengerId,
         vehicleId,
@@ -885,6 +1075,8 @@ function DraggablePublisherChip({
       );
     })
     .onUpdate((event) => {
+      setSharedValue(dragX, event.absoluteX);
+      setSharedValue(dragY, event.absoluteY);
       runOnJS(onDragMove)(event.absoluteX, event.absoluteY);
     })
     .onEnd((event) => {

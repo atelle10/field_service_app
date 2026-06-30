@@ -295,14 +295,6 @@ export const styles = StyleSheet.create({
     borderColor: colors.dangerText,
     borderLeftColor: colors.dangerText,
   },
-  vehicleCardDropTarget: {
-    borderColor: colors.mint,
-    borderLeftColor: colors.mint,
-  },
-  vehicleCardDropBlocked: {
-    borderColor: colors.dangerText,
-    borderLeftColor: colors.dangerText,
-  },
   vehicleHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -504,9 +496,6 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.24,
     shadowRadius: 12,
-  },
-  draggedSeatCanDrop: {
-    backgroundColor: colors.mint,
   },
   publisherModalOverlay: {
     flex: 1,
