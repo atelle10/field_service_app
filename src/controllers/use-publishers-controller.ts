@@ -28,6 +28,10 @@ export function usePublishersController() {
     router.navigate('/publishers');
   };
 
+  const goToHistory = () => {
+    router.navigate('/history');
+  };
+
   const goToOptions = () => {
     router.navigate('/options');
   };
@@ -37,6 +41,7 @@ export function usePublishersController() {
     clearPersistentCache,
     deleteAllPublisherProfiles,
     goHome,
+    goToHistory,
     goToPublishers,
     goToOptions,
     publisherProfiles: getSortedPublishers(

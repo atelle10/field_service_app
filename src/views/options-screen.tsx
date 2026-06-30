@@ -17,6 +17,7 @@ type InfoKey = 'capacity' | 'strategy' | null;
 type OptionsScreenProps = {
   clearPersistentCache: () => Promise<void>;
   goHome: () => void;
+  goToHistory: () => void;
   goToOptions: () => void;
   goToPublishers: () => void;
   preferences: AppPreferences;
@@ -30,6 +31,7 @@ type OptionsScreenProps = {
 export function OptionsScreen({
   clearPersistentCache,
   goHome,
+  goToHistory,
   goToOptions,
   goToPublishers,
   preferences,
@@ -54,6 +56,7 @@ export function OptionsScreen({
           onClearCache={clearPersistentCache}
           onClose={() => setMenuOpen(false)}
           onSelectHome={goHome}
+          onSelectHistory={goToHistory}
           onSelectOptions={goToOptions}
           onSelectPublishers={goToPublishers}
           storageUsageBytes={storageUsageBytes}

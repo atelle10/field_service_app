@@ -1,0 +1,72 @@
+import { router } from 'expo-router';
+
+import { useGroupSession } from '@/context/group-session-context';
+import {
+  getHistoryPassengerDisplayName as getHistoryPassengerDisplayNameFromEntry,
+  type ResultsHistoryEntry,
+} from '@/services/group-session-service';
+
+export function useHistoryController() {
+  const {
+    clearPersistentCache,
+    deleteAllSavedResults,
+    deleteSavedResult,
+    hasActiveSession,
+    restoreSavedResult,
+    savedResults,
+    storageUsageBytes,
+  } = useGroupSession();
+
+  const goHome = () => {
+    if (hasActiveSession) {
+      router.navigate('/results');
+      return;
+    }
+
+    router.replace('/select');
+  };
+
+  const goToHistory = () => {
+    router.navigate('/history');
+  };
+
+  const goToPublishers = () => {
+    router.navigate('/publishers');
+  };
+
+  const goToOptions = () => {
+    router.navigate('/options');
+  };
+
+  const restoreResult = (resultId: string) => {
+    restoreSavedResult(resultId);
+    router.navigate('/results');
+  };
+
+  const getHistoryPassengerDisplayName = (
+    entry: ResultsHistoryEntry,
+    passengerId: string,
+  ) => {
+    return getHistoryPassengerDisplayNameFromEntry(entry, passengerId);
+  };
+
+  return {
+    clearPersistentCache,
+    deleteAllSavedResults,
+    deleteSavedResult,
+    getHistoryPassengerDisplayName,
+    goHome,
+    goToHistory,
+    goToOptions,
+    goToPublishers,
+    restoreResult,
+    savedResults: getSortedSavedResults(savedResults),
+    storageUsageBytes,
+  };
+}
+
+function getSortedSavedResults(savedResults: ResultsHistoryEntry[]) {
+  return [...savedResults].sort((firstResult, secondResult) => {
+    return Date.parse(secondResult.createdAt) - Date.parse(firstResult.createdAt);
+  });
+}

@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { House, Info, SlidersHorizontal, StepBack, UsersRound } from 'lucide-react-native';
+import {
+  History,
+  House,
+  Info,
+  SlidersHorizontal,
+  StepBack,
+  UsersRound,
+} from 'lucide-react-native';
 import {
   Animated,
   Easing,
@@ -15,6 +22,7 @@ import { colors, radii } from '@/styles/theme';
 
 const menuOptions = [
   { Icon: UsersRound, label: 'Publishers' },
+  { Icon: History, label: 'History' },
   { Icon: SlidersHorizontal, label: 'Options' },
   { Icon: Info, label: 'Info' },
 ] as const;
@@ -26,6 +34,7 @@ type AppMenuDrawerProps = {
   onClose: () => void;
   onClearCache: () => void | Promise<void>;
   onSelectHome: () => void;
+  onSelectHistory: () => void;
   onSelectPublishers: () => void;
   onSelectOptions: () => void;
   storageUsageBytes: number;
@@ -35,6 +44,7 @@ export function AppMenuDrawer({
   onClearCache,
   onClose,
   onSelectHome,
+  onSelectHistory,
   onSelectPublishers,
   onSelectOptions,
   storageUsageBytes,
@@ -107,6 +117,8 @@ export function AppMenuDrawer({
           const onSelect =
             label === 'Publishers'
               ? onSelectPublishers
+              : label === 'History'
+                ? onSelectHistory
               : label === 'Options'
                 ? onSelectOptions
                 : undefined;

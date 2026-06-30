@@ -25,6 +25,10 @@ export function useOptionsController() {
     router.navigate('/publishers');
   };
 
+  const goToHistory = () => {
+    router.navigate('/history');
+  };
+
   const goToOptions = () => {
     router.navigate('/options');
   };
@@ -42,6 +46,7 @@ export function useOptionsController() {
   return {
     clearPersistentCache,
     goHome,
+    goToHistory,
     goToOptions,
     goToPublishers,
     preferences,

@@ -159,11 +159,16 @@ export const styles = StyleSheet.create({
   storageFooter: {
     gap: 10,
   },
+  resultsFooterActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
+  },
   saveResultButton: {
     minHeight: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-end',
     borderWidth: 1,
     borderColor: colors.mint,
     borderRadius: radii.small,
@@ -172,6 +177,24 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   saveResultButtonText: {
+    color: colors.mint,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  historyFooterButton: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.mint,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  historyFooterButtonText: {
     color: colors.mint,
     fontSize: 13,
     fontWeight: '700',

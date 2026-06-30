@@ -13,6 +13,7 @@ type PublishersScreenProps = {
   clearPersistentCache: () => Promise<void>;
   deleteAllPublisherProfiles: () => void;
   goHome: () => void;
+  goToHistory: () => void;
   goToPublishers: () => void;
   goToOptions: () => void;
   publisherProfiles: PublisherProfile[];
@@ -25,6 +26,7 @@ export function PublishersScreen({
   clearPersistentCache,
   deleteAllPublisherProfiles,
   goHome,
+  goToHistory,
   goToPublishers,
   goToOptions,
   publisherProfiles,
@@ -63,6 +65,7 @@ export function PublishersScreen({
           onClose={() => setMenuOpen(false)}
           onClearCache={clearPersistentCache}
           onSelectHome={goHome}
+          onSelectHistory={goToHistory}
           onSelectPublishers={goToPublishers}
           onSelectOptions={goToOptions}
           storageUsageBytes={storageUsageBytes}

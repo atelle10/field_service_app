@@ -3,7 +3,9 @@ import { useEffect } from 'react';
 
 import { useGroupSession } from '@/context/group-session-context';
 import type { PublisherProfile } from '@/models/group-assignment';
-import { getPassengerDisplayName as getPassengerDisplayNameFromState } from '@/services/group-session-service';
+import {
+  getPassengerDisplayName as getPassengerDisplayNameFromState,
+} from '@/services/group-session-service';
 
 export function useResultsController() {
   const {
@@ -48,6 +50,10 @@ export function useResultsController() {
     router.navigate('/publishers');
   };
 
+  const goToHistory = () => {
+    router.navigate('/history');
+  };
+
   const goToOptions = () => {
     router.navigate('/options');
   };
@@ -73,6 +79,7 @@ export function useResultsController() {
     getPassengerDisplayName,
     hasAssignedPublisherProfile,
     goHome,
+    goToHistory,
     goToPublishers,
     goToOptions,
     hasActiveSession,

@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Check, Menu, Pencil, RefreshCcw, X } from 'lucide-react-native';
+import { Check, History, Menu, Pencil, RefreshCcw, X } from 'lucide-react-native';
 import {
   ActivityIndicator,
   Animated as RNAnimated,
@@ -110,6 +110,7 @@ type ResultsScreenProps = {
   getPassengerDisplayName: (passengerId: string) => string;
   hasAssignedPublisherProfile: (passengerId: string) => boolean;
   goHome: () => void;
+  goToHistory: () => void;
   goToPublishers: () => void;
   goToOptions: () => void;
   isLoading: boolean;
@@ -140,6 +141,7 @@ export function ResultsScreen({
   getPassengerDisplayName,
   hasAssignedPublisherProfile,
   goHome,
+  goToHistory,
   goToPublishers,
   goToOptions,
   isLoading,
@@ -561,6 +563,7 @@ export function ResultsScreen({
           onClose={() => setMenuOpen(false)}
           onClearCache={clearPersistentCache}
           onSelectHome={goHome}
+          onSelectHistory={goToHistory}
           onSelectPublishers={goToPublishers}
           onSelectOptions={goToOptions}
           storageUsageBytes={storageUsageBytes}
@@ -937,17 +940,30 @@ export function ResultsScreen({
           </View>
 
           <View style={styles.storageFooter}>
-            {distribution && !preferences.autoSaveResults && (
+            <View style={styles.resultsFooterActions}>
+              {distribution && !preferences.autoSaveResults && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={saveCurrentResult}
+                  style={({ pressed }) => [
+                    styles.saveResultButton,
+                    pressed && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.saveResultButtonText}>Save Result</Text>
+                </Pressable>
+              )}
+
               <Pressable
                 accessibilityRole="button"
-                onPress={saveCurrentResult}
+                onPress={goToHistory}
                 style={({ pressed }) => [
-                  styles.saveResultButton,
+                  styles.historyFooterButton,
                   pressed && styles.buttonPressed,
                 ]}>
-                <Text style={styles.saveResultButtonText}>Save Result</Text>
+                <History color={colors.mint} size={16} strokeWidth={2.5} />
+                <Text style={styles.historyFooterButtonText}>History</Text>
               </Pressable>
-            )}
+            </View>
           </View>
         </ScrollView>
 
