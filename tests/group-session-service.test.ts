@@ -13,13 +13,18 @@ import {
   assignPublisherNameInResultsState,
   assignPublisherProfileInResultsState,
   completeActiveCalculation,
+  createActiveResultsStateFromHistoryEntry,
   createCompletedResultsState,
   createEmptyGroupSessionState,
+  deleteAllSavedResultsFromSessionState,
   deleteAllPublisherProfilesFromSessionState,
+  deleteResultHistoryEntryFromSessionState,
+  getHistoryPassengerDisplayName,
   getPassengerDisplayName,
   markResultsStale,
   movePassengerToVehicleInResultsState,
   removePublisherProfileFromSessionState,
+  restoreResultHistoryEntryInSessionState,
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
   updatePreferencesInSessionState,
@@ -306,6 +311,7 @@ describe('group session service', () => {
       preferences: DEFAULT_APP_PREFERENCES,
       publisherProfiles: activeSession.publisherProfiles,
       resultsHistory: [],
+      savedResults: [],
     };
     const nextState = removePublisherProfileFromSessionState(
       sessionState,
@@ -333,6 +339,7 @@ describe('group session service', () => {
       preferences: DEFAULT_APP_PREFERENCES,
       publisherProfiles: activeSession.publisherProfiles,
       resultsHistory: [],
+      savedResults: [],
     };
     const nextState = deleteAllPublisherProfilesFromSessionState(sessionState);
 
@@ -442,6 +449,7 @@ describe('group session service', () => {
         preferences: DEFAULT_APP_PREFERENCES,
         publisherProfiles: [],
         resultsHistory: [],
+        savedResults: [],
       },
       {
         ...DEFAULT_APP_PREFERENCES,
@@ -465,6 +473,7 @@ describe('group session service', () => {
         preferences: DEFAULT_APP_PREFERENCES,
         publisherProfiles: [],
         resultsHistory: [],
+        savedResults: [],
       },
       {
         ...DEFAULT_APP_PREFERENCES,
@@ -474,4 +483,122 @@ describe('group session service', () => {
 
     assert.equal(nextState.activeSession?.rerunPromptVisible, false);
   });
+
+  it('creates active results state from a saved history entry without loading state', () => {
+    const savedEntry = createSavedHistoryEntry('saved-result-1');
+    const activeState = createActiveResultsStateFromHistoryEntry(savedEntry);
+
+    assert.equal(activeState.isLoading, false);
+    assert.equal(activeState.rerunPromptVisible, false);
+    assert.equal(activeState.staleMessage, '');
+    assert.equal(activeState.publisherCount, savedEntry.publisherCount);
+    assert.equal(activeState.distribution, savedEntry.distribution);
+  });
+
+  it('deletes one saved result from session state', () => {
+    const firstEntry = createSavedHistoryEntry('saved-result-1');
+    const secondEntry = createSavedHistoryEntry('saved-result-2');
+    const sessionState = {
+      ...createEmptyGroupSessionState(),
+      savedResults: [firstEntry, secondEntry],
+    };
+    const nextState = deleteResultHistoryEntryFromSessionState(
+      sessionState,
+      'saved-result-1',
+    );
+
+    assert.deepEqual(nextState.savedResults, [secondEntry]);
+  });
+
+  it('no-ops saved result deletion for missing IDs', () => {
+    const firstEntry = createSavedHistoryEntry('saved-result-1');
+    const sessionState = {
+      ...createEmptyGroupSessionState(),
+      savedResults: [firstEntry],
+    };
+
+    assert.equal(
+      deleteResultHistoryEntryFromSessionState(sessionState, 'missing-result'),
+      sessionState,
+    );
+  });
+
+  it('clears all saved results from session state', () => {
+    const sessionState = {
+      ...createEmptyGroupSessionState(),
+      savedResults: [
+        createSavedHistoryEntry('saved-result-1'),
+        createSavedHistoryEntry('saved-result-2'),
+      ],
+    };
+    const nextState = deleteAllSavedResultsFromSessionState(sessionState);
+
+    assert.deepEqual(nextState.savedResults, []);
+  });
+
+  it('restores a saved result into the active session without recalculating', () => {
+    const savedEntry = createSavedHistoryEntry('saved-result-1');
+    const sessionState = {
+      ...createEmptyGroupSessionState(),
+      savedResults: [savedEntry],
+    };
+    const nextState = restoreResultHistoryEntryInSessionState(
+      sessionState,
+      'saved-result-1',
+    );
+
+    assert.equal(nextState.activeSession?.distribution, savedEntry.distribution);
+    assert.equal(nextState.activeSession?.isLoading, false);
+    assert.equal(nextState.activeSession?.rerunPromptVisible, false);
+    assert.equal(nextState.resultsHistory.length, 0);
+  });
+
+  it('restores saved publisher labels with a saved result', () => {
+    const savedEntry = createSavedHistoryEntry('saved-result-1');
+    const sessionState = {
+      ...createEmptyGroupSessionState(),
+      savedResults: [savedEntry],
+    };
+    const nextState = restoreResultHistoryEntryInSessionState(
+      sessionState,
+      'saved-result-1',
+    );
+
+    assert.equal(
+      nextState.activeSession?.passengerPublisherIds['publisher-1'],
+      'publisher-profile-1',
+    );
+    assert.equal(getPassengerDisplayName(nextState.activeSession!, 'publisher-1'), 'Ana');
+  });
+
+  it('resolves custom and default publisher names for history previews', () => {
+    const savedEntry = createSavedHistoryEntry('saved-result-1');
+
+    assert.equal(getHistoryPassengerDisplayName(savedEntry, 'publisher-1'), 'Ana');
+    assert.equal(
+      getHistoryPassengerDisplayName(savedEntry, 'publisher-2'),
+      'Publisher 2',
+    );
+  });
 });
+
+function createSavedHistoryEntry(id: string) {
+  const activeSession = assignPublisherNameInResultsState(
+    createCompletedResultsState(4, createDefaultVehicles(2), false),
+    'publisher-1',
+    'Ana',
+  );
+
+  assert.ok(activeSession.distribution);
+
+  return {
+    id,
+    createdAt: '2026-06-30T19:45:00.000Z',
+    distribution: activeSession.distribution,
+    passengerPublisherIds: activeSession.passengerPublisherIds,
+    publisherCount: activeSession.publisherCount,
+    publisherProfiles: activeSession.publisherProfiles,
+    strategy: activeSession.strategy,
+    vehicles: activeSession.vehicles,
+  };
+}

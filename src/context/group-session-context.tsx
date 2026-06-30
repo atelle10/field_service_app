@@ -21,6 +21,7 @@ import {
   mergePersistedPublishers,
   saveAppPreferences,
   savePublisherProfiles,
+  saveResultHistoryEntries,
   saveResultHistoryEntry,
 } from '@/services/persistent-storage-service';
 import {
@@ -31,11 +32,14 @@ import {
   completeActiveCalculation,
   createEmptyGroupSessionState,
   createLoadingResultsState,
+  deleteAllSavedResultsFromSessionState,
   deleteAllPublisherProfilesFromSessionState,
+  deleteResultHistoryEntryFromSessionState,
   type GroupSessionState,
   markResultsStale,
   movePassengerToVehicleInResultsState,
   removePublisherProfileFromSessionState,
+  restoreResultHistoryEntryInSessionState,
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
   type ResultsHistoryEntry,
@@ -82,9 +86,13 @@ type GroupSessionContextValue = {
   publisherProfiles: ActiveResultsState['publisherProfiles'];
   recalculateDistribution: () => void;
   movePassengerToVehicle: (passengerId: string, targetVehicleId: string) => void;
+  deleteAllSavedResults: () => void;
+  deleteSavedResult: (resultId: string) => void;
   removePublisherProfile: (publisherId: string) => void;
+  restoreSavedResult: (resultId: string) => void;
   restorePassengerDefaultLabel: (passengerId: string) => void;
   resultsHistory: ResultsHistoryEntry[];
+  savedResults: ResultsHistoryEntry[];
   refreshStorageUsage: () => Promise<void>;
   saveCurrentResult: () => Promise<void>;
   storageActionFeedback: StorageActionFeedback | null;
@@ -161,6 +169,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           : currentState.activeSession,
         preferences: DEFAULT_APP_PREFERENCES,
         publisherProfiles: [],
+        savedResults: [],
       }));
       setStorageActionFeedback({
         message:
@@ -254,18 +263,23 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
               ? {
                   ...completedState.activeSession,
                   publisherProfiles: nextPublisherProfiles,
-                }
+              }
               : completedState.activeSession,
             publisherProfiles: nextPublisherProfiles,
           };
-
           if (
             currentState.preferences.autoSaveResults &&
             nextState.resultsHistory.length > currentState.resultsHistory.length
           ) {
             const latestEntry = nextState.resultsHistory[nextState.resultsHistory.length - 1];
             void saveResultHistoryEntry(latestEntry)
-              .then(setStorageUsageBytes)
+              .then((nextStorageUsageBytes) => {
+                setStorageUsageBytes(nextStorageUsageBytes);
+                setState((latestState) => ({
+                  ...latestState,
+                  savedResults: [...latestState.savedResults, latestEntry],
+                }));
+              })
               .catch((error) => {
                 setStorageActionFeedback({
                   message: getStorageActionErrorMessage(error),
@@ -359,6 +373,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
             persistedData.publisherProfiles,
           ),
           preferences: persistedData.preferences,
+          savedResults: persistedData.savedResults,
         }));
         setStorageUsageBytes(persistedData.storageUsageBytes);
       })
@@ -628,6 +643,10 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     try {
       const nextStorageUsageBytes = await saveResultHistoryEntry(entry);
       setStorageUsageBytes(nextStorageUsageBytes);
+      setState((currentState) => ({
+        ...currentState,
+        savedResults: [...currentState.savedResults, entry],
+      }));
       setStorageActionFeedback({
         message: 'This distribution result was saved on this device.',
         title: 'Result saved',
@@ -640,6 +659,97 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         tone: 'error',
       });
     }
+  };
+
+  const deleteSavedResultImmediately = async (resultId: string) => {
+    try {
+      let nextSavedResults: ResultsHistoryEntry[] | null = null;
+
+      setState((currentState) => {
+        const nextState = deleteResultHistoryEntryFromSessionState(
+          currentState,
+          resultId,
+        );
+        nextSavedResults = nextState.savedResults;
+        return nextState;
+      });
+
+      if (!nextSavedResults) {
+        return;
+      }
+
+      const nextStorageUsageBytes = await saveResultHistoryEntries(nextSavedResults);
+      setStorageUsageBytes(nextStorageUsageBytes);
+      setStorageActionFeedback({
+        message: 'The saved result was removed from this device.',
+        title: 'Result deleted',
+        tone: 'success',
+      });
+    } catch (error) {
+      setStorageActionFeedback({
+        message: getStorageActionErrorMessage(error),
+        title: 'Result could not be deleted',
+        tone: 'error',
+      });
+    }
+  };
+
+  const deleteSavedResult = (resultId: string) => {
+    runDestructiveAction(
+      {
+        confirmLabel: 'Delete',
+        message: 'This removes the saved result from this device.',
+        title: 'Delete saved result?',
+      },
+      () => deleteSavedResultImmediately(resultId),
+    );
+  };
+
+  const deleteAllSavedResultsImmediately = async () => {
+    try {
+      let nextSavedResults: ResultsHistoryEntry[] | null = null;
+
+      setState((currentState) => {
+        const nextState = deleteAllSavedResultsFromSessionState(currentState);
+        nextSavedResults = nextState.savedResults;
+        return nextState;
+      });
+
+      if (!nextSavedResults) {
+        return;
+      }
+
+      const nextStorageUsageBytes = await saveResultHistoryEntries(nextSavedResults);
+      setStorageUsageBytes(nextStorageUsageBytes);
+      setStorageActionFeedback({
+        message: 'All saved results were removed from this device.',
+        title: 'History cleared',
+        tone: 'success',
+      });
+    } catch (error) {
+      setStorageActionFeedback({
+        message: getStorageActionErrorMessage(error),
+        title: 'History could not be cleared',
+        tone: 'error',
+      });
+    }
+  };
+
+  const deleteAllSavedResults = () => {
+    runDestructiveAction(
+      {
+        confirmLabel: 'Clear All',
+        message: 'This removes all saved results from this device.',
+        title: 'Clear saved results?',
+      },
+      deleteAllSavedResultsImmediately,
+    );
+  };
+
+  const restoreSavedResult = (resultId: string) => {
+    setState((currentState) =>
+      restoreResultHistoryEntryInSessionState(currentState, resultId),
+    );
   };
 
   const restorePassengerDefaultLabel = (passengerId: string) => {
@@ -686,6 +796,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         clearPersistentCache,
         confirmDestructiveAction,
         deleteAllPublisherProfiles,
+        deleteAllSavedResults,
+        deleteSavedResult,
         destructiveActionConfirmation,
         dismissDestructiveActionConfirmation,
         dismissStorageActionFeedback,
@@ -697,7 +809,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         removePublisherProfile,
         refreshStorageUsage,
         restorePassengerDefaultLabel,
+        restoreSavedResult,
         resultsHistory: state.resultsHistory,
+        savedResults: state.savedResults,
         saveCurrentResult,
         storageActionFeedback,
         storageUsageBytes,

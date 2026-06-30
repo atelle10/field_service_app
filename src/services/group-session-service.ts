@@ -41,6 +41,7 @@ export type GroupSessionState = {
   preferences: AppPreferences;
   publisherProfiles: PublisherProfile[];
   resultsHistory: ResultsHistoryEntry[];
+  savedResults: ResultsHistoryEntry[];
 };
 
 export type DistributionValidationResult =
@@ -53,6 +54,7 @@ export function createEmptyGroupSessionState(): GroupSessionState {
     preferences: DEFAULT_APP_PREFERENCES,
     publisherProfiles: [],
     resultsHistory: [],
+    savedResults: [],
   };
 }
 
@@ -172,6 +174,7 @@ export function completeActiveCalculation(
     resultsHistory: historyEntry
       ? [...sessionState.resultsHistory, historyEntry]
       : sessionState.resultsHistory,
+    savedResults: sessionState.savedResults,
   };
 }
 
@@ -236,6 +239,84 @@ export function updateVehicleLabelInResultsState(
       vehicle.id === vehicleId ? { ...vehicle, label: nextLabel } : vehicle,
     ),
   };
+}
+
+export function createActiveResultsStateFromHistoryEntry(
+  entry: ResultsHistoryEntry,
+): ActiveResultsState {
+  return {
+    distribution: entry.distribution,
+    errorMessage: '',
+    isLoading: false,
+    passengerPublisherIds: entry.passengerPublisherIds,
+    publisherCount: entry.publisherCount,
+    publisherProfiles: entry.publisherProfiles,
+    rerunPromptVisible: false,
+    staleMessage: '',
+    strategy: entry.strategy,
+    vehicles: entry.vehicles,
+  };
+}
+
+export function deleteResultHistoryEntryFromSessionState(
+  state: GroupSessionState,
+  resultId: string,
+): GroupSessionState {
+  const savedResults = state.savedResults.filter((result) => result.id !== resultId);
+
+  if (savedResults.length === state.savedResults.length) {
+    return state;
+  }
+
+  return {
+    ...state,
+    savedResults,
+  };
+}
+
+export function deleteAllSavedResultsFromSessionState(
+  state: GroupSessionState,
+): GroupSessionState {
+  if (state.savedResults.length === 0) {
+    return state;
+  }
+
+  return {
+    ...state,
+    savedResults: [],
+  };
+}
+
+export function restoreResultHistoryEntryInSessionState(
+  state: GroupSessionState,
+  resultId: string,
+): GroupSessionState {
+  const savedResult = state.savedResults.find((result) => result.id === resultId);
+
+  if (!savedResult) {
+    return state;
+  }
+
+  const activeSession = createActiveResultsStateFromHistoryEntry(savedResult);
+
+  return {
+    ...state,
+    activeSession,
+    publisherProfiles: mergePublisherProfiles(
+      state.publisherProfiles,
+      activeSession.publisherProfiles,
+    ),
+  };
+}
+
+export function getHistoryPassengerDisplayName(
+  entry: ResultsHistoryEntry,
+  passengerId: string,
+) {
+  const publisherId = entry.passengerPublisherIds[passengerId];
+  const publisher = entry.publisherProfiles.find((profile) => profile.id === publisherId);
+
+  return publisher?.name ?? formatPlaceholderPassengerLabel(passengerId);
 }
 
 export function movePassengerToVehicleInResultsState(
@@ -522,6 +603,27 @@ function removePublisherMappings(
       ([, publisherId]) => !publisherIds.has(publisherId),
     ),
   );
+}
+
+function mergePublisherProfiles(
+  existingProfiles: PublisherProfile[],
+  incomingProfiles: PublisherProfile[],
+) {
+  const mergedProfiles = [...existingProfiles];
+
+  for (const incomingProfile of incomingProfiles) {
+    const alreadyExists = mergedProfiles.some(
+      (profile) =>
+        normalizePublisherNameForCompare(profile.name) ===
+        normalizePublisherNameForCompare(incomingProfile.name),
+    );
+
+    if (!alreadyExists) {
+      mergedProfiles.push(incomingProfile);
+    }
+  }
+
+  return mergedProfiles;
 }
 
 function normalizePublisherName(name: string) {

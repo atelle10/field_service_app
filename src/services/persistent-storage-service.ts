@@ -72,6 +72,16 @@ export async function saveResultHistoryEntry(entry: ResultsHistoryEntry) {
   return getPersistentStorageUsage();
 }
 
+export async function saveResultHistoryEntries(entries: ResultsHistoryEntry[]) {
+  const asyncStorage = await getAsyncStorage();
+  await asyncStorage.setItem(
+    SAVED_RESULTS_STORAGE_KEY,
+    serializePersistentResults(entries),
+  );
+
+  return getPersistentStorageUsage();
+}
+
 export async function saveAppPreferences(preferences: AppPreferences) {
   const asyncStorage = await getAsyncStorage();
   await asyncStorage.setItem(
