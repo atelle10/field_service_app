@@ -8,12 +8,18 @@ import {
   useState,
 } from 'react';
 
-import type { VehicleInput } from '@/models/group-assignment';
+import {
+  DEFAULT_APP_PREFERENCES,
+  type AppPreferences,
+  type DistributionStrategyId,
+  type VehicleInput,
+} from '@/models/group-assignment';
 import {
   clearPersistentStorage,
   getPersistentStorageUsage,
   loadPersistedGroupData,
   mergePersistedPublishers,
+  saveAppPreferences,
   savePublisherProfiles,
   saveResultHistoryEntry,
 } from '@/services/persistent-storage-service';
@@ -32,6 +38,7 @@ import {
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
   type ResultsHistoryEntry,
+  updatePreferencesInSessionState,
   updateVehicleLabelInResultsState,
   validateNewDistribution,
 } from '@/services/group-session-service';
@@ -48,6 +55,12 @@ export type StorageActionFeedback = {
   tone: 'error' | 'success';
 };
 
+export type DestructiveActionConfirmation = {
+  confirmLabel: string;
+  message: string;
+  title: string;
+};
+
 type GroupSessionContextValue = {
   activeSession: ActiveResultsState | null;
   addPublisherProfile: (name: string) => void;
@@ -58,9 +71,13 @@ type GroupSessionContextValue = {
     vehicleCount: number,
   ) => BeginDistributionResult;
   clearPersistentCache: () => Promise<void>;
+  confirmDestructiveAction: () => void;
   deleteAllPublisherProfiles: () => void;
+  destructiveActionConfirmation: DestructiveActionConfirmation | null;
+  dismissDestructiveActionConfirmation: () => void;
   dismissStorageActionFeedback: () => void;
   hasActiveSession: boolean;
+  preferences: AppPreferences;
   publisherProfiles: ActiveResultsState['publisherProfiles'];
   recalculateDistribution: () => void;
   removePublisherProfile: (publisherId: string) => void;
@@ -70,6 +87,7 @@ type GroupSessionContextValue = {
   saveCurrentResult: () => Promise<void>;
   storageActionFeedback: StorageActionFeedback | null;
   storageUsageBytes: number;
+  updateAppPreferences: (preferences: AppPreferences) => void;
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
   updateVehicleCount: (vehicleCount: number) => void;
@@ -88,6 +106,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const [storageUsageBytes, setStorageUsageBytes] = useState(0);
   const [storageActionFeedback, setStorageActionFeedback] =
     useState<StorageActionFeedback | null>(null);
+  const confirmationActionRef = useRef<(() => void | Promise<void>) | null>(null);
+  const [destructiveActionConfirmation, setDestructiveActionConfirmation] =
+    useState<DestructiveActionConfirmation | null>(null);
 
   const refreshStorageUsage = useCallback(async () => {
     const nextStorageUsageBytes = await getPersistentStorageUsage();
@@ -102,7 +123,28 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const clearPersistentCache = useCallback(async () => {
+  const persistPreferences = useCallback(async (preferences: AppPreferences) => {
+    const nextStorageUsageBytes = await saveAppPreferences(preferences);
+    setStorageUsageBytes(nextStorageUsageBytes);
+  }, []);
+
+  const runDestructiveAction = useCallback(
+    (
+      confirmation: DestructiveActionConfirmation,
+      action: () => void | Promise<void>,
+    ) => {
+      if (!state.preferences.confirmDestructiveActions) {
+        void action();
+        return;
+      }
+
+      confirmationActionRef.current = action;
+      setDestructiveActionConfirmation(confirmation);
+    },
+    [state.preferences.confirmDestructiveActions],
+  );
+
+  const clearPersistentCacheImmediately = useCallback(async () => {
     try {
       const nextStorageUsageBytes = await clearPersistentStorage();
       setStorageUsageBytes(nextStorageUsageBytes);
@@ -115,10 +157,12 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
               publisherProfiles: [],
             }
           : currentState.activeSession,
+        preferences: DEFAULT_APP_PREFERENCES,
         publisherProfiles: [],
       }));
       setStorageActionFeedback({
-        message: 'Stored publishers and saved results were removed from this device.',
+        message:
+          'Stored publishers, saved results, and preferences were removed from this device.',
         title: 'Cache cleared',
         tone: 'success',
       });
@@ -131,6 +175,30 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const clearPersistentCache = useCallback(async () => {
+    runDestructiveAction(
+      {
+        confirmLabel: 'Clear Cache',
+        message:
+          'This removes stored publishers, saved results, and preferences from this device.',
+        title: 'Clear cached data?',
+      },
+      clearPersistentCacheImmediately,
+    );
+  }, [clearPersistentCacheImmediately, runDestructiveAction]);
+
+  const dismissDestructiveActionConfirmation = useCallback(() => {
+    confirmationActionRef.current = null;
+    setDestructiveActionConfirmation(null);
+  }, []);
+
+  const confirmDestructiveAction = useCallback(() => {
+    const action = confirmationActionRef.current;
+    confirmationActionRef.current = null;
+    setDestructiveActionConfirmation(null);
+    void action?.();
+  }, []);
+
   const dismissStorageActionFeedback = useCallback(() => {
     setStorageActionFeedback(null);
   }, []);
@@ -141,6 +209,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       publisherCount: number,
       vehicles: VehicleInput[],
       rerunPromptVisible: boolean,
+      strategy: DistributionStrategyId,
       publisherProfiles: ActiveResultsState['publisherProfiles'],
       passengerPublisherIds: ActiveResultsState['passengerPublisherIds'],
     ) => {
@@ -164,6 +233,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
             publisherCount,
             vehicles,
             rerunPromptVisible,
+            strategy,
             {
               createdAt: new Date().toISOString(),
               id: `result-${historyId}`,
@@ -176,7 +246,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
             currentState.publisherProfiles,
           );
 
-          return {
+          const nextState = {
             ...completedState,
             activeSession: completedState.activeSession
               ? {
@@ -186,6 +256,24 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
               : completedState.activeSession,
             publisherProfiles: nextPublisherProfiles,
           };
+
+          if (
+            currentState.preferences.autoSaveResults &&
+            nextState.resultsHistory.length > currentState.resultsHistory.length
+          ) {
+            const latestEntry = nextState.resultsHistory[nextState.resultsHistory.length - 1];
+            void saveResultHistoryEntry(latestEntry)
+              .then(setStorageUsageBytes)
+              .catch((error) => {
+                setStorageActionFeedback({
+                  message: getStorageActionErrorMessage(error),
+                  title: 'Auto-save failed',
+                  tone: 'error',
+                });
+              });
+          }
+
+          return nextState;
         });
         timeoutRef.current = null;
       }, remainingDelay);
@@ -198,6 +286,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       publisherCount: number,
       vehicles: VehicleInput[],
       rerunPromptVisible: boolean,
+      strategy: DistributionStrategyId,
       publisherProfiles: ActiveResultsState['publisherProfiles'] = [],
       passengerPublisherIds: ActiveResultsState['passengerPublisherIds'] = {},
     ) => {
@@ -214,6 +303,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           publisherCount,
           vehicles,
           rerunPromptVisible,
+          strategy,
           publisherProfiles,
           passengerPublisherIds,
         ),
@@ -223,6 +313,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         publisherCount,
         vehicles,
         rerunPromptVisible,
+        strategy,
         publisherProfiles,
         passengerPublisherIds,
       );
@@ -265,6 +356,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
             currentState.publisherProfiles,
             persistedData.publisherProfiles,
           ),
+          preferences: persistedData.preferences,
         }));
         setStorageUsageBytes(persistedData.storageUsageBytes);
       })
@@ -283,7 +375,12 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     publisherCount: number,
     vehicleCount: number,
   ): BeginDistributionResult => {
-    const validationResult = validateNewDistribution(publisherCount, vehicleCount);
+    const validationResult = validateNewDistribution(
+      publisherCount,
+      vehicleCount,
+      state.preferences.defaultVehicleCapacity,
+      state.preferences.distributionStrategy,
+    );
 
     if (!validationResult.ok) {
       return { ok: false, errorMessage: validationResult.errorMessage };
@@ -293,9 +390,15 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       publisherCount,
       validationResult.vehicles,
       false,
+      state.preferences.distributionStrategy,
       state.publisherProfiles,
     );
     return { ok: true };
+  };
+
+  const updateAppPreferences = (preferences: AppPreferences) => {
+    setState((currentState) => updatePreferencesInSessionState(currentState, preferences));
+    void persistPreferences(preferences);
   };
 
   const updatePublisherCount = (publisherCount: number) => {
@@ -326,7 +429,11 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         activeSession: markResultsStale({
           ...currentState.activeSession,
           errorMessage: '',
-          vehicles: resizeVehicles(currentState.activeSession.vehicles, vehicleCount),
+          vehicles: resizeVehicles(
+            currentState.activeSession.vehicles,
+            vehicleCount,
+            currentState.preferences.defaultVehicleCapacity,
+          ),
         }),
       };
     });
@@ -428,7 +535,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removePublisherProfile = (publisherId: string) => {
+  const removePublisherProfileImmediately = (publisherId: string) => {
     setState((currentState) => {
       const nextState = removePublisherProfileFromSessionState(
         currentState,
@@ -443,7 +550,18 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const deleteAllPublisherProfiles = () => {
+  const removePublisherProfile = (publisherId: string) => {
+    runDestructiveAction(
+      {
+        confirmLabel: 'Remove',
+        message: 'This removes the saved publisher name from this device.',
+        title: 'Remove publisher?',
+      },
+      () => removePublisherProfileImmediately(publisherId),
+    );
+  };
+
+  const deleteAllPublisherProfilesImmediately = () => {
     setState((currentState) => {
       const nextState = deleteAllPublisherProfilesFromSessionState(currentState);
 
@@ -453,6 +571,17 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
 
       return nextState;
     });
+  };
+
+  const deleteAllPublisherProfiles = () => {
+    runDestructiveAction(
+      {
+        confirmLabel: 'Delete All',
+        message: 'This removes all saved publisher names from this device.',
+        title: 'Delete all publishers?',
+      },
+      deleteAllPublisherProfilesImmediately,
+    );
   };
 
   const saveCurrentResult = async () => {
@@ -473,6 +602,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       passengerPublisherIds: activeSession.passengerPublisherIds,
       publisherCount: activeSession.publisherCount,
       publisherProfiles: activeSession.publisherProfiles,
+      strategy: activeSession.strategy,
       vehicles: activeSession.vehicles,
     };
 
@@ -520,6 +650,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       activeSession.publisherCount,
       activeSession.vehicles,
       false,
+      activeSession.strategy,
       activeSession.publisherProfiles,
       activeSession.passengerPublisherIds,
     );
@@ -534,9 +665,13 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         assignPublisherProfile,
         beginNewDistribution,
         clearPersistentCache,
+        confirmDestructiveAction,
         deleteAllPublisherProfiles,
+        destructiveActionConfirmation,
+        dismissDestructiveActionConfirmation,
         dismissStorageActionFeedback,
         hasActiveSession: state.activeSession !== null,
+        preferences: state.preferences,
         publisherProfiles: state.publisherProfiles,
         recalculateDistribution,
         removePublisherProfile,
@@ -546,6 +681,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         saveCurrentResult,
         storageActionFeedback,
         storageUsageBytes,
+        updateAppPreferences,
         updatePublisherCount,
         updateVehicleCapacity,
         updateVehicleCount,

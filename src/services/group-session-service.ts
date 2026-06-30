@@ -1,6 +1,8 @@
 import {
-  DistributionStrategy,
+  DEFAULT_APP_PREFERENCES,
+  type AppPreferences,
   type DistributionResponse,
+  type DistributionStrategyId,
   type PublisherProfile,
   type VehicleInput,
 } from '@/models/group-assignment';
@@ -19,6 +21,7 @@ export type ActiveResultsState = {
   passengerPublisherIds: Record<string, string>;
   rerunPromptVisible: boolean;
   staleMessage: string;
+  strategy: DistributionStrategyId;
   vehicles: VehicleInput[];
 };
 
@@ -29,11 +32,13 @@ export type ResultsHistoryEntry = {
   passengerPublisherIds: Record<string, string>;
   publisherCount: number;
   publisherProfiles: PublisherProfile[];
+  strategy: DistributionStrategyId;
   vehicles: VehicleInput[];
 };
 
 export type GroupSessionState = {
   activeSession: ActiveResultsState | null;
+  preferences: AppPreferences;
   publisherProfiles: PublisherProfile[];
   resultsHistory: ResultsHistoryEntry[];
 };
@@ -45,6 +50,7 @@ export type DistributionValidationResult =
 export function createEmptyGroupSessionState(): GroupSessionState {
   return {
     activeSession: null,
+    preferences: DEFAULT_APP_PREFERENCES,
     publisherProfiles: [],
     resultsHistory: [],
   };
@@ -53,9 +59,11 @@ export function createEmptyGroupSessionState(): GroupSessionState {
 export function validateNewDistribution(
   publisherCount: number,
   vehicleCount: number,
+  defaultVehicleCapacity = DEFAULT_APP_PREFERENCES.defaultVehicleCapacity,
+  strategy = DEFAULT_APP_PREFERENCES.distributionStrategy,
 ): DistributionValidationResult {
-  const vehicles = createDefaultVehicles(vehicleCount);
-  const result = createCompletedResultsState(publisherCount, vehicles, false);
+  const vehicles = createDefaultVehicles(vehicleCount, defaultVehicleCapacity);
+  const result = createCompletedResultsState(publisherCount, vehicles, false, strategy);
 
   if (result.errorMessage) {
     return { ok: false, errorMessage: result.errorMessage };
@@ -68,6 +76,7 @@ export function createLoadingResultsState(
   publisherCount: number,
   vehicles: VehicleInput[],
   rerunPromptVisible: boolean,
+  strategy: DistributionStrategyId = DEFAULT_APP_PREFERENCES.distributionStrategy,
   publisherProfiles: PublisherProfile[] = [],
   passengerPublisherIds: Record<string, string> = {},
 ): ActiveResultsState {
@@ -80,6 +89,7 @@ export function createLoadingResultsState(
     publisherProfiles,
     rerunPromptVisible,
     staleMessage: '',
+    strategy,
     vehicles,
   };
 }
@@ -88,6 +98,7 @@ export function createCompletedResultsState(
   publisherCount: number,
   vehicles: VehicleInput[],
   rerunPromptVisible: boolean,
+  strategy: DistributionStrategyId = DEFAULT_APP_PREFERENCES.distributionStrategy,
   publisherProfiles: PublisherProfile[] = [],
   passengerPublisherIds: Record<string, string> = {},
 ): ActiveResultsState {
@@ -95,7 +106,7 @@ export function createCompletedResultsState(
     const distribution = createDistributionSuggestion({
       passengers: createPlaceholderPassengers(publisherCount),
       vehicles,
-      strategy: DistributionStrategy.MinimizeCars,
+      strategy,
     });
 
     return {
@@ -107,6 +118,7 @@ export function createCompletedResultsState(
       publisherProfiles,
       rerunPromptVisible,
       staleMessage: '',
+      strategy,
       vehicles,
     };
   } catch (error) {
@@ -120,6 +132,7 @@ export function createCompletedResultsState(
       publisherProfiles,
       rerunPromptVisible: false,
       staleMessage: '',
+      strategy,
       vehicles,
     };
   }
@@ -130,6 +143,7 @@ export function completeActiveCalculation(
   publisherCount: number,
   vehicles: VehicleInput[],
   rerunPromptVisible: boolean,
+  strategy: DistributionStrategyId,
   historyMetadata: { createdAt: string; id: string },
   publisherProfiles: PublisherProfile[] = [],
   passengerPublisherIds: Record<string, string> = {},
@@ -138,6 +152,7 @@ export function completeActiveCalculation(
     publisherCount,
     vehicles,
     rerunPromptVisible,
+    strategy,
     publisherProfiles,
     passengerPublisherIds,
   );
@@ -152,6 +167,7 @@ export function completeActiveCalculation(
 
   return {
     activeSession,
+    preferences: sessionState.preferences,
     publisherProfiles: activeSession.publisherProfiles,
     resultsHistory: historyEntry
       ? [...sessionState.resultsHistory, historyEntry]
@@ -168,6 +184,28 @@ export function markResultsStale(state: ActiveResultsState): ActiveResultsState 
     staleMessage:
       overCapacityMessage ??
       'Selections changed - press Recalculate to update this distribution.',
+  };
+}
+
+export function updatePreferencesInSessionState(
+  state: GroupSessionState,
+  preferences: AppPreferences,
+): GroupSessionState {
+  const strategyChanged =
+    state.preferences.distributionStrategy !== preferences.distributionStrategy;
+  const activeSession =
+    strategyChanged && state.activeSession
+      ? markResultsStale({
+          ...state.activeSession,
+          errorMessage: '',
+          strategy: preferences.distributionStrategy,
+        })
+      : state.activeSession;
+
+  return {
+    ...state,
+    activeSession,
+    preferences,
   };
 }
 
@@ -376,12 +414,19 @@ export function getPassengerDisplayName(state: ActiveResultsState, passengerId: 
   return publisher?.name ?? formatPlaceholderPassengerLabel(passengerId);
 }
 
-export function resizeVehicles(vehicles: VehicleInput[], vehicleCount: number) {
+export function resizeVehicles(
+  vehicles: VehicleInput[],
+  vehicleCount: number,
+  defaultVehicleCapacity = DEFAULT_APP_PREFERENCES.defaultVehicleCapacity,
+) {
   if (vehicleCount <= vehicles.length) {
     return vehicles.slice(0, vehicleCount);
   }
 
-  const additionalVehicles = createDefaultVehicles(vehicleCount).slice(vehicles.length);
+  const additionalVehicles = createDefaultVehicles(
+    vehicleCount,
+    defaultVehicleCapacity,
+  ).slice(vehicles.length);
   return [...vehicles, ...additionalVehicles];
 }
 
@@ -436,6 +481,7 @@ function createResultsHistoryEntry(
     passengerPublisherIds: activeSession.passengerPublisherIds,
     publisherCount: activeSession.publisherCount,
     publisherProfiles: activeSession.publisherProfiles,
+    strategy: activeSession.strategy,
     vehicles: activeSession.vehicles,
     distribution,
   };

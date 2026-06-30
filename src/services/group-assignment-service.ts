@@ -27,11 +27,14 @@ export function createPlaceholderPassengers(publisherCount: number): Passenger[]
   }));
 }
 
-export function createDefaultVehicles(vehicleCount: number): VehicleInput[] {
+export function createDefaultVehicles(
+  vehicleCount: number,
+  capacity = DEFAULT_VEHICLE_CAPACITY,
+): VehicleInput[] {
   return Array.from({ length: vehicleCount }, (_, index) => ({
     id: `vehicle-${index + 1}`,
     label: `Vehicle ${index + 1}`,
-    capacity: DEFAULT_VEHICLE_CAPACITY,
+    capacity,
   }));
 }
 

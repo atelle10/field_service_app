@@ -3,6 +3,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import {
+  DEFAULT_APP_PREFERENCES,
+  DistributionStrategy,
+} from '@/models/group-assignment';
 import { createDefaultVehicles } from '@/services/group-assignment-service';
 import {
   addPublisherProfileToSessionState,
@@ -17,6 +21,7 @@ import {
   removePublisherProfileFromSessionState,
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
+  updatePreferencesInSessionState,
   updateVehicleLabelInResultsState,
   validateNewDistribution,
 } from '@/services/group-session-service';
@@ -29,6 +34,21 @@ describe('group session service', () => {
 
     if (result.ok) {
       assert.deepEqual(result.vehicles, createDefaultVehicles(2));
+    }
+  });
+
+  it('uses configured default capacity when validating a new distribution', () => {
+    const result = validateNewDistribution(
+      12,
+      2,
+      6,
+      DistributionStrategy.MaximizeComfort,
+    );
+
+    assert.equal(result.ok, true);
+
+    if (result.ok) {
+      assert.deepEqual(result.vehicles, createDefaultVehicles(2, 6));
     }
   });
 
@@ -57,11 +77,12 @@ describe('group session service', () => {
     const completedState = createCompletedResultsState(8, createDefaultVehicles(2), false);
     const staleState = markResultsStale({
       ...completedState,
-      vehicles: resizeVehicles(completedState.vehicles, 3),
+      vehicles: resizeVehicles(completedState.vehicles, 3, 7),
     });
 
     assert.equal(staleState.rerunPromptVisible, true);
     assert.equal(staleState.vehicles.length, 3);
+    assert.equal(staleState.vehicles[2].capacity, 7);
     assert.equal(staleState.distribution, completedState.distribution);
   });
 
@@ -184,6 +205,7 @@ describe('group session service', () => {
     );
     const sessionState = {
       activeSession,
+      preferences: DEFAULT_APP_PREFERENCES,
       publisherProfiles: activeSession.publisherProfiles,
       resultsHistory: [],
     };
@@ -210,6 +232,7 @@ describe('group session service', () => {
     );
     const sessionState = {
       activeSession,
+      preferences: DEFAULT_APP_PREFERENCES,
       publisherProfiles: activeSession.publisherProfiles,
       resultsHistory: [],
     };
@@ -226,6 +249,7 @@ describe('group session service', () => {
       10,
       createDefaultVehicles(2),
       false,
+      DistributionStrategy.MinimizeCars,
       { createdAt: '2026-06-25T00:00:00.000Z', id: 'result-1' },
     );
 
@@ -242,6 +266,7 @@ describe('group session service', () => {
       10,
       createDefaultVehicles(2),
       false,
+      DistributionStrategy.MinimizeCars,
       { createdAt: '2026-06-25T00:00:00.000Z', id: 'result-1' },
       [{ id: 'publisher-profile-1', name: 'Ana' }],
       { 'publisher-1': 'publisher-profile-1' },
@@ -269,11 +294,86 @@ describe('group session service', () => {
       12,
       createDefaultVehicles(2),
       false,
+      DistributionStrategy.MinimizeCars,
       { createdAt: '2026-06-25T00:00:00.000Z', id: 'result-1' },
     );
 
     assert.equal(sessionState.resultsHistory.length, 0);
     assert.equal(sessionState.activeSession?.distribution, null);
     assert.match(sessionState.activeSession?.errorMessage ?? '', /12 publishers need 12 seats/);
+  });
+
+  it('preserves preferences when a calculation completes', () => {
+    const sessionState = completeActiveCalculation(
+      {
+        ...createEmptyGroupSessionState(),
+        preferences: {
+          ...DEFAULT_APP_PREFERENCES,
+          defaultVehicleCapacity: 6,
+          distributionStrategy: DistributionStrategy.MaximizeComfort,
+        },
+      },
+      10,
+      createDefaultVehicles(2, 6),
+      false,
+      DistributionStrategy.MaximizeComfort,
+      { createdAt: '2026-06-25T00:00:00.000Z', id: 'result-1' },
+    );
+
+    assert.equal(sessionState.preferences.defaultVehicleCapacity, 6);
+    assert.equal(
+      sessionState.preferences.distributionStrategy,
+      DistributionStrategy.MaximizeComfort,
+    );
+    assert.equal(
+      sessionState.activeSession?.strategy,
+      DistributionStrategy.MaximizeComfort,
+    );
+  });
+
+  it('marks active results stale when distribution strategy changes', () => {
+    const activeSession = createCompletedResultsState(
+      10,
+      createDefaultVehicles(2),
+      false,
+      DistributionStrategy.MinimizeCars,
+    );
+    const nextState = updatePreferencesInSessionState(
+      {
+        activeSession,
+        preferences: DEFAULT_APP_PREFERENCES,
+        publisherProfiles: [],
+        resultsHistory: [],
+      },
+      {
+        ...DEFAULT_APP_PREFERENCES,
+        distributionStrategy: DistributionStrategy.MaximizeComfort,
+      },
+    );
+
+    assert.equal(nextState.activeSession?.rerunPromptVisible, true);
+    assert.equal(
+      nextState.activeSession?.strategy,
+      DistributionStrategy.MaximizeComfort,
+    );
+    assert.equal(nextState.activeSession?.distribution, activeSession.distribution);
+  });
+
+  it('does not mark active results stale when unrelated preferences change', () => {
+    const activeSession = createCompletedResultsState(10, createDefaultVehicles(2), false);
+    const nextState = updatePreferencesInSessionState(
+      {
+        activeSession,
+        preferences: DEFAULT_APP_PREFERENCES,
+        publisherProfiles: [],
+        resultsHistory: [],
+      },
+      {
+        ...DEFAULT_APP_PREFERENCES,
+        defaultVehicleCapacity: 6,
+      },
+    );
+
+    assert.equal(nextState.activeSession?.rerunPromptVisible, false);
   });
 });
