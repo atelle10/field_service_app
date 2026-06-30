@@ -3,11 +3,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { DistributionStrategy } from '@/models/group-assignment';
+import {
+  DEFAULT_APP_PREFERENCES,
+  DistributionStrategy,
+} from '@/models/group-assignment';
 import type { ResultsHistoryEntry } from '@/services/group-session-service';
 import {
   estimateStorageBytes,
+  mergePersistedPreferences,
   mergePersistedPublishers,
+  serializePersistentPreferences,
   serializePersistentPublishers,
   serializePersistentResults,
 } from '@/services/persistent-storage-service';
@@ -41,6 +46,7 @@ describe('persistent storage service', () => {
         passengerPublisherIds: {},
         publisherCount: 0,
         publisherProfiles: [],
+        strategy: DistributionStrategy.MinimizeCars,
         vehicles: [],
       },
     ];
@@ -50,6 +56,43 @@ describe('persistent storage service', () => {
 
   it('estimates UTF-8 storage bytes from serialized values', () => {
     assert.equal(estimateStorageBytes(['abc', 'é', '🚗']), 9);
+  });
+
+  it('serializes app preferences as JSON', () => {
+    const preferences = {
+      ...DEFAULT_APP_PREFERENCES,
+      defaultVehicleCapacity: 6,
+      distributionStrategy: DistributionStrategy.MaximizeComfort,
+    };
+
+    assert.equal(serializePersistentPreferences(preferences), JSON.stringify(preferences));
+  });
+
+  it('hydrates default preferences from malformed persisted values', () => {
+    assert.deepEqual(mergePersistedPreferences(null), DEFAULT_APP_PREFERENCES);
+    assert.deepEqual(
+      mergePersistedPreferences({
+        defaultVehicleCapacity: 0,
+        distributionStrategy: 'unknown',
+      }),
+      DEFAULT_APP_PREFERENCES,
+    );
+  });
+
+  it('merges persisted preferences with defaults for missing fields', () => {
+    assert.deepEqual(
+      mergePersistedPreferences({
+        autoSaveResults: true,
+        defaultVehicleCapacity: 7,
+        distributionStrategy: DistributionStrategy.MaximizeComfort,
+      }),
+      {
+        ...DEFAULT_APP_PREFERENCES,
+        autoSaveResults: true,
+        defaultVehicleCapacity: 7,
+        distributionStrategy: DistributionStrategy.MaximizeComfort,
+      },
+    );
   });
 
   it('merges persisted publishers with normalized name dedupe', () => {

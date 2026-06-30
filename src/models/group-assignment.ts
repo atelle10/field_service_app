@@ -18,6 +18,26 @@ export type PublisherProfile = {
   name: string;
 };
 
+export type AppPreferences = {
+  autoSaveResults: boolean;
+  confirmDestructiveActions: boolean;
+  defaultVehicleCapacity: number;
+  distributionStrategy: DistributionStrategyId;
+  showUnusedVehicles: boolean;
+  sortPublishersAlphabetically: boolean;
+  summaryStartsExpanded: boolean;
+};
+
+export const DEFAULT_APP_PREFERENCES: AppPreferences = {
+  autoSaveResults: false,
+  confirmDestructiveActions: true,
+  defaultVehicleCapacity: DEFAULT_VEHICLE_CAPACITY,
+  distributionStrategy: DistributionStrategy.MinimizeCars,
+  showUnusedVehicles: true,
+  sortPublishersAlphabetically: false,
+  summaryStartsExpanded: false,
+};
+
 export type VehicleInput = {
   id: string;
   label: string;

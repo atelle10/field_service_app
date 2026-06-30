@@ -1,15 +1,26 @@
 import type AsyncStorageStatic from '@react-native-async-storage/async-storage';
 
-import type { PublisherProfile } from '@/models/group-assignment';
+import {
+  DEFAULT_APP_PREFERENCES,
+  DistributionStrategy,
+  type AppPreferences,
+  type PublisherProfile,
+} from '@/models/group-assignment';
 import type { ResultsHistoryEntry } from '@/services/group-session-service';
 
 const PUBLISHERS_STORAGE_KEY = 'fieldServiceAssistant:v1:publishers';
 const SAVED_RESULTS_STORAGE_KEY = 'fieldServiceAssistant:v1:savedResults';
-const APP_STORAGE_KEYS = [PUBLISHERS_STORAGE_KEY, SAVED_RESULTS_STORAGE_KEY] as const;
+const PREFERENCES_STORAGE_KEY = 'fieldServiceAssistant:v1:preferences';
+const APP_STORAGE_KEYS = [
+  PUBLISHERS_STORAGE_KEY,
+  SAVED_RESULTS_STORAGE_KEY,
+  PREFERENCES_STORAGE_KEY,
+] as const;
 
 type AsyncStorageModule = typeof AsyncStorageStatic;
 
 export type PersistedGroupData = {
+  preferences: AppPreferences;
   publisherProfiles: PublisherProfile[];
   savedResults: ResultsHistoryEntry[];
   storageUsageBytes: number;
@@ -17,17 +28,21 @@ export type PersistedGroupData = {
 
 export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
   const asyncStorage = await getAsyncStorage();
-  const [[, publishersValue], [, savedResultsValue]] = await asyncStorage.multiGet([
-    PUBLISHERS_STORAGE_KEY,
-    SAVED_RESULTS_STORAGE_KEY,
-  ]);
+  const [[, publishersValue], [, savedResultsValue], [, preferencesValue]] =
+    await asyncStorage.multiGet([
+      PUBLISHERS_STORAGE_KEY,
+      SAVED_RESULTS_STORAGE_KEY,
+      PREFERENCES_STORAGE_KEY,
+    ]);
 
   return {
+    preferences: parseAppPreferences(preferencesValue),
     publisherProfiles: parsePublisherProfiles(publishersValue),
     savedResults: parseSavedResults(savedResultsValue),
     storageUsageBytes: estimateStorageBytes([
       publishersValue ?? '',
       savedResultsValue ?? '',
+      preferencesValue ?? '',
     ]),
   };
 }
@@ -57,6 +72,16 @@ export async function saveResultHistoryEntry(entry: ResultsHistoryEntry) {
   return getPersistentStorageUsage();
 }
 
+export async function saveAppPreferences(preferences: AppPreferences) {
+  const asyncStorage = await getAsyncStorage();
+  await asyncStorage.setItem(
+    PREFERENCES_STORAGE_KEY,
+    serializePersistentPreferences(preferences),
+  );
+
+  return getPersistentStorageUsage();
+}
+
 export async function getPersistentStorageUsage() {
   const asyncStorage = await getAsyncStorage();
   const entries = await asyncStorage.multiGet([...APP_STORAGE_KEYS]);
@@ -79,8 +104,68 @@ export function serializePersistentResults(results: ResultsHistoryEntry[]) {
   return JSON.stringify(results);
 }
 
+export function serializePersistentPreferences(preferences: AppPreferences) {
+  return JSON.stringify(preferences);
+}
+
+export function mergePersistedPreferences(value: unknown): AppPreferences {
+  if (typeof value !== 'object' || value === null) {
+    return DEFAULT_APP_PREFERENCES;
+  }
+
+  const candidate = value as Partial<AppPreferences>;
+  const defaultVehicleCapacity =
+    typeof candidate.defaultVehicleCapacity === 'number' &&
+    Number.isInteger(candidate.defaultVehicleCapacity) &&
+    candidate.defaultVehicleCapacity >= 1
+      ? candidate.defaultVehicleCapacity
+      : DEFAULT_APP_PREFERENCES.defaultVehicleCapacity;
+  const distributionStrategy =
+    candidate.distributionStrategy === DistributionStrategy.MinimizeCars ||
+    candidate.distributionStrategy === DistributionStrategy.MaximizeComfort
+      ? candidate.distributionStrategy
+      : DEFAULT_APP_PREFERENCES.distributionStrategy;
+
+  return {
+    autoSaveResults:
+      typeof candidate.autoSaveResults === 'boolean'
+        ? candidate.autoSaveResults
+        : DEFAULT_APP_PREFERENCES.autoSaveResults,
+    confirmDestructiveActions:
+      typeof candidate.confirmDestructiveActions === 'boolean'
+        ? candidate.confirmDestructiveActions
+        : DEFAULT_APP_PREFERENCES.confirmDestructiveActions,
+    defaultVehicleCapacity,
+    distributionStrategy,
+    showUnusedVehicles:
+      typeof candidate.showUnusedVehicles === 'boolean'
+        ? candidate.showUnusedVehicles
+        : DEFAULT_APP_PREFERENCES.showUnusedVehicles,
+    sortPublishersAlphabetically:
+      typeof candidate.sortPublishersAlphabetically === 'boolean'
+        ? candidate.sortPublishersAlphabetically
+        : DEFAULT_APP_PREFERENCES.sortPublishersAlphabetically,
+    summaryStartsExpanded:
+      typeof candidate.summaryStartsExpanded === 'boolean'
+        ? candidate.summaryStartsExpanded
+        : DEFAULT_APP_PREFERENCES.summaryStartsExpanded,
+  };
+}
+
 export function estimateStorageBytes(values: string[]) {
   return values.reduce((total, value) => total + getUtf8ByteLength(value), 0);
+}
+
+function parseAppPreferences(value: string | null) {
+  if (!value) {
+    return DEFAULT_APP_PREFERENCES;
+  }
+
+  try {
+    return mergePersistedPreferences(JSON.parse(value));
+  } catch {
+    return DEFAULT_APP_PREFERENCES;
+  }
 }
 
 export function mergePersistedPublishers(
