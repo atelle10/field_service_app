@@ -18,6 +18,7 @@ import {
   deleteAllPublisherProfilesFromSessionState,
   getPassengerDisplayName,
   markResultsStale,
+  movePassengerToVehicleInResultsState,
   removePublisherProfileFromSessionState,
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
@@ -98,6 +99,103 @@ describe('group session service', () => {
     assert.equal(renamedState.distribution?.assignments[0].label, 'Roberto');
     assert.equal(renamedState.rerunPromptVisible, false);
     assert.equal(renamedState.distribution?.summary, completedState.distribution?.summary);
+  });
+
+  it('moves a passenger to another vehicle with open capacity', () => {
+    const completedState = createCompletedResultsState(6, createDefaultVehicles(2), false);
+    const nextState = movePassengerToVehicleInResultsState(
+      completedState,
+      'publisher-1',
+      'vehicle-2',
+    );
+
+    const sourceAssignment = nextState.distribution?.assignments.find(
+      (assignment) => assignment.vehicleId === 'vehicle-1',
+    );
+    const targetAssignment = nextState.distribution?.assignments.find(
+      (assignment) => assignment.vehicleId === 'vehicle-2',
+    );
+
+    assert.equal(sourceAssignment?.passengerIds.includes('publisher-1'), false);
+    assert.equal(targetAssignment?.passengerIds.includes('publisher-1'), true);
+    assert.equal(nextState.rerunPromptVisible, false);
+    assert.equal(nextState.staleMessage, '');
+  });
+
+  it('rejects moving a passenger into a full vehicle', () => {
+    const completedState = createCompletedResultsState(10, createDefaultVehicles(2), false);
+    const nextState = movePassengerToVehicleInResultsState(
+      completedState,
+      'publisher-1',
+      'vehicle-2',
+    );
+
+    assert.equal(nextState, completedState);
+  });
+
+  it('preserves custom publisher labels when moving passengers', () => {
+    const completedState = createCompletedResultsState(6, createDefaultVehicles(2), false);
+    const namedState = assignPublisherNameInResultsState(
+      completedState,
+      'publisher-1',
+      'Samuel',
+    );
+    const movedState = movePassengerToVehicleInResultsState(
+      namedState,
+      'publisher-1',
+      'vehicle-2',
+    );
+
+    assert.equal(movedState.passengerPublisherIds['publisher-1'], 'publisher-profile-1');
+    assert.equal(getPassengerDisplayName(movedState, 'publisher-1'), 'Samuel');
+  });
+
+  it('updates assignment in-use flags and vehicles used after a move', () => {
+    const completedState = createCompletedResultsState(1, createDefaultVehicles(2), false);
+    const movedState = movePassengerToVehicleInResultsState(
+      completedState,
+      'publisher-1',
+      'vehicle-2',
+    );
+    const sourceAssignment = movedState.distribution?.assignments.find(
+      (assignment) => assignment.vehicleId === 'vehicle-1',
+    );
+    const targetAssignment = movedState.distribution?.assignments.find(
+      (assignment) => assignment.vehicleId === 'vehicle-2',
+    );
+
+    assert.equal(sourceAssignment?.inUse, false);
+    assert.equal(targetAssignment?.inUse, true);
+    assert.equal(movedState.distribution?.summary.vehiclesUsed, 1);
+  });
+
+  it('no-ops passenger moves for missing passengers, missing targets, and same vehicle', () => {
+    const completedState = createCompletedResultsState(6, createDefaultVehicles(2), false);
+
+    assert.equal(
+      movePassengerToVehicleInResultsState(completedState, 'publisher-99', 'vehicle-2'),
+      completedState,
+    );
+    assert.equal(
+      movePassengerToVehicleInResultsState(completedState, 'publisher-1', 'vehicle-99'),
+      completedState,
+    );
+    assert.equal(
+      movePassengerToVehicleInResultsState(completedState, 'publisher-1', 'vehicle-1'),
+      completedState,
+    );
+  });
+
+  it('no-ops passenger moves when no distribution exists', () => {
+    const loadingState = {
+      ...createCompletedResultsState(6, createDefaultVehicles(2), false),
+      distribution: null,
+    };
+
+    assert.equal(
+      movePassengerToVehicleInResultsState(loadingState, 'publisher-1', 'vehicle-2'),
+      loadingState,
+    );
   });
 
   it('assigns a new publisher name to a passenger in active session state', () => {

@@ -238,6 +238,68 @@ export function updateVehicleLabelInResultsState(
   };
 }
 
+export function movePassengerToVehicleInResultsState(
+  state: ActiveResultsState,
+  passengerId: string,
+  targetVehicleId: string,
+): ActiveResultsState {
+  if (!state.distribution) {
+    return state;
+  }
+
+  const sourceAssignment = state.distribution.assignments.find((assignment) =>
+    assignment.passengerIds.includes(passengerId),
+  );
+  const targetAssignment = state.distribution.assignments.find(
+    (assignment) => assignment.vehicleId === targetVehicleId,
+  );
+
+  if (
+    !sourceAssignment ||
+    !targetAssignment ||
+    sourceAssignment.vehicleId === targetVehicleId ||
+    targetAssignment.passengerIds.length >= targetAssignment.capacity
+  ) {
+    return state;
+  }
+
+  const assignments = state.distribution.assignments.map((assignment) => {
+    if (assignment.vehicleId === sourceAssignment.vehicleId) {
+      const passengerIds = assignment.passengerIds.filter(
+        (assignmentPassengerId) => assignmentPassengerId !== passengerId,
+      );
+
+      return {
+        ...assignment,
+        inUse: passengerIds.length > 0,
+        passengerIds,
+      };
+    }
+
+    if (assignment.vehicleId === targetVehicleId) {
+      return {
+        ...assignment,
+        inUse: true,
+        passengerIds: [...assignment.passengerIds, passengerId],
+      };
+    }
+
+    return assignment;
+  });
+
+  return {
+    ...state,
+    distribution: {
+      ...state.distribution,
+      assignments,
+      summary: {
+        ...state.distribution.summary,
+        vehiclesUsed: assignments.filter((assignment) => assignment.inUse).length,
+      },
+    },
+  };
+}
+
 export function assignPublisherNameInResultsState(
   state: ActiveResultsState,
   passengerId: string,

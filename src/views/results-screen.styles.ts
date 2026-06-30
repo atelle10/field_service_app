@@ -295,6 +295,14 @@ export const styles = StyleSheet.create({
     borderColor: colors.dangerText,
     borderLeftColor: colors.dangerText,
   },
+  vehicleCardDropTarget: {
+    borderColor: colors.mint,
+    borderLeftColor: colors.mint,
+  },
+  vehicleCardDropBlocked: {
+    borderColor: colors.dangerText,
+    borderLeftColor: colors.dangerText,
+  },
   vehicleHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -442,6 +450,9 @@ export const styles = StyleSheet.create({
   occupiedSeatWarning: {
     backgroundColor: colors.dangerText,
   },
+  occupiedSeatDragging: {
+    opacity: 0.28,
+  },
   occupiedSeatText: {
     color: colors.text,
     fontSize: 14,
@@ -468,6 +479,34 @@ export const styles = StyleSheet.create({
     color: colors.textSubtle,
     fontSize: 14,
     fontWeight: '600',
+  },
+  dragWarningPanel: {
+    borderWidth: 1,
+    borderColor: colors.dangerText,
+    borderRadius: radii.small,
+    backgroundColor: colors.dangerBackground,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dragWarningText: {
+    color: colors.dangerText,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  draggedSeatOverlay: {
+    position: 'absolute',
+    zIndex: 30,
+  },
+  draggedSeat: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+  },
+  draggedSeatCanDrop: {
+    backgroundColor: colors.mint,
   },
   publisherModalOverlay: {
     flex: 1,

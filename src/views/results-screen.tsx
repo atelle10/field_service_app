@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Menu, Pencil, RefreshCcw, X } from 'lucide-react-native';
 import {
   ActivityIndicator,
@@ -10,6 +10,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -26,6 +28,25 @@ import { styles } from '@/views/results-screen.styles';
 
 type ActiveCountPicker = 'publishers' | 'vehicles' | null;
 
+type DragState = {
+  canDrop: boolean;
+  label: string;
+  passengerId: string;
+  sourceVehicleId: string;
+  targetVehicleId: string | null;
+  x: number;
+  y: number;
+};
+
+type VehicleDropZone = {
+  canAccept: boolean;
+  vehicleId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 type ResultsScreenProps = {
   assignPublisherName: (passengerId: string, name: string) => void;
   assignPublisherProfile: (passengerId: string, publisherId: string) => void;
@@ -38,6 +59,7 @@ type ResultsScreenProps = {
   goToPublishers: () => void;
   goToOptions: () => void;
   isLoading: boolean;
+  movePassengerToVehicle: (passengerId: string, targetVehicleId: string) => void;
   preferences: AppPreferences;
   publisherCount: number;
   publisherProfiles: PublisherProfile[];
@@ -67,6 +89,7 @@ export function ResultsScreen({
   goToPublishers,
   goToOptions,
   isLoading,
+  movePassengerToVehicle,
   preferences,
   publisherCount,
   publisherProfiles,
@@ -84,6 +107,8 @@ export function ResultsScreen({
   vehicles,
 }: ResultsScreenProps) {
   const [activeCountPicker, setActiveCountPicker] = useState<ActiveCountPicker>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [dropWarning, setDropWarning] = useState('');
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [editingVehicleLabel, setEditingVehicleLabel] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -93,6 +118,11 @@ export function ResultsScreen({
   const [summaryExpanded, setSummaryExpanded] = useState(
     preferences.summaryStartsExpanded,
   );
+  const dropWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressChipPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [suppressChipPress, setSuppressChipPress] = useState(false);
+  const vehicleCardRefs = useRef<Record<string, View | null>>({});
+  const vehicleDropZonesRef = useRef<VehicleDropZone[]>([]);
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
   const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
@@ -137,9 +167,161 @@ export function ResultsScreen({
     };
   }, [recalculatePulse, rerunPromptVisible]);
 
+  useEffect(
+    () => () => {
+      if (dropWarningTimeoutRef.current) {
+        clearTimeout(dropWarningTimeoutRef.current);
+      }
+
+      if (suppressChipPressTimeoutRef.current) {
+        clearTimeout(suppressChipPressTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
   const closeCountPicker = () => {
     setActiveCountPicker(null);
   };
+
+  const showDropWarning = useCallback((message: string) => {
+    if (dropWarningTimeoutRef.current) {
+      clearTimeout(dropWarningTimeoutRef.current);
+    }
+
+    setDropWarning(message);
+    dropWarningTimeoutRef.current = setTimeout(() => {
+      setDropWarning('');
+      dropWarningTimeoutRef.current = null;
+    }, 1800);
+  }, []);
+
+  const findDropZone = useCallback((x: number, y: number) => {
+    return (
+      vehicleDropZonesRef.current.find(
+        (zone) =>
+          x >= zone.x &&
+          x <= zone.x + zone.width &&
+          y >= zone.y &&
+          y <= zone.y + zone.height,
+      ) ?? null
+    );
+  }, []);
+
+  const measureVehicleDropZones = useCallback(() => {
+    const zones: VehicleDropZone[] = [];
+    vehicleDropZonesRef.current = [];
+
+    for (const vehicle of visibleVehicles) {
+      const vehicleCard = vehicleCardRefs.current[vehicle.id];
+      const assignment = distribution?.assignments.find(
+        (vehicleAssignment) => vehicleAssignment.vehicleId === vehicle.id,
+      );
+      const passengerCount = assignment?.passengerIds.length ?? 0;
+
+      vehicleCard?.measureInWindow((x, y, width, height) => {
+        zones.push({
+          canAccept: passengerCount < vehicle.capacity,
+          height,
+          vehicleId: vehicle.id,
+          width,
+          x,
+          y,
+        });
+        vehicleDropZonesRef.current = zones;
+      });
+    }
+  }, [distribution?.assignments, visibleVehicles]);
+
+  const handleDragStart = useCallback(
+    (
+      passengerId: string,
+      sourceVehicleId: string,
+      label: string,
+      x: number,
+      y: number,
+    ) => {
+      setActiveCountPicker(null);
+      setMenuOpen(false);
+      setDropWarning('');
+      setSuppressChipPress(true);
+      measureVehicleDropZones();
+      setDragState({
+        canDrop: false,
+        label,
+        passengerId,
+        sourceVehicleId,
+        targetVehicleId: null,
+        x,
+        y,
+      });
+    },
+    [measureVehicleDropZones],
+  );
+
+  const handleDragMove = useCallback(
+    (x: number, y: number) => {
+      setDragState((currentDragState) => {
+        if (!currentDragState) {
+          return currentDragState;
+        }
+
+        const dropZone = findDropZone(x, y);
+        const isSameVehicle = dropZone?.vehicleId === currentDragState.sourceVehicleId;
+        const canDrop = Boolean(dropZone && dropZone.canAccept && !isSameVehicle);
+
+        return {
+          ...currentDragState,
+          canDrop,
+          targetVehicleId: dropZone?.vehicleId ?? null,
+          x,
+          y,
+        };
+      });
+    },
+    [findDropZone],
+  );
+
+  const handleDragEnd = useCallback(
+    (passengerId: string, sourceVehicleId: string, x: number, y: number) => {
+      const dropZone = findDropZone(x, y);
+
+      if (!dropZone) {
+        showDropWarning('Drop on a vehicle with open seats.');
+        setDragState(null);
+        return;
+      }
+
+      if (dropZone.vehicleId === sourceVehicleId) {
+        setDragState(null);
+        return;
+      }
+
+      if (!dropZone.canAccept) {
+        showDropWarning('Vehicle is full.');
+        setDragState(null);
+        return;
+      }
+
+      movePassengerToVehicle(passengerId, dropZone.vehicleId);
+      setDragState(null);
+    },
+    [findDropZone, movePassengerToVehicle, showDropWarning],
+  );
+
+  const handleDragFinalize = useCallback(() => {
+    setDragState(null);
+    setSuppressChipPress(true);
+
+    if (suppressChipPressTimeoutRef.current) {
+      clearTimeout(suppressChipPressTimeoutRef.current);
+    }
+
+    suppressChipPressTimeoutRef.current = setTimeout(() => {
+      setSuppressChipPress(false);
+      suppressChipPressTimeoutRef.current = null;
+    }, 350);
+  }, []);
 
   const togglePublisherPicker = () => {
     setMenuOpen(false);
@@ -188,6 +370,10 @@ export function ResultsScreen({
   };
 
   const openPublisherEditor = (passengerId: string) => {
+    if (suppressChipPress) {
+      return;
+    }
+
     setActiveCountPicker(null);
     setMenuOpen(false);
     setSelectedPassengerId(passengerId);
@@ -269,6 +455,7 @@ export function ResultsScreen({
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!dragState}
           onScrollBeginDrag={closeCountPicker}>
           {activeCountPicker && (
             <Pressable
@@ -387,6 +574,12 @@ export function ResultsScreen({
             </View>
           )}
 
+          {!!dropWarning && (
+            <View style={styles.dragWarningPanel}>
+              <Text style={styles.dragWarningText}>{dropWarning}</Text>
+            </View>
+          )}
+
           {distribution?.summary && (
             <View style={styles.summaryMenu}>
               <Pressable
@@ -436,12 +629,21 @@ export function ResultsScreen({
               return (
                 <View
                   key={vehicle.id}
+                  ref={(node) => {
+                    vehicleCardRefs.current[vehicle.id] = node;
+                  }}
                   style={[
                     styles.vehicleCard,
                     passengerIds.length > 0
                       ? styles.vehicleCardInUse
                       : styles.vehicleCardUnused,
                     isOverCapacity && styles.vehicleCardOverCapacity,
+                    dragState?.targetVehicleId === vehicle.id &&
+                      dragState.canDrop &&
+                      styles.vehicleCardDropTarget,
+                    dragState?.targetVehicleId === vehicle.id &&
+                      !dragState.canDrop &&
+                      styles.vehicleCardDropBlocked,
                   ]}>
                   <View style={styles.vehicleHeader}>
                     <View style={styles.vehicleTitlePanel}>
@@ -567,26 +769,25 @@ export function ResultsScreen({
                   )}
 
                   <View style={styles.seatGrid}>
-                    {passengerIds.map((passengerId) => (
-                      <Pressable
-                        accessibilityLabel={`Edit ${getPassengerDisplayName(passengerId)}`}
-                        accessibilityRole="button"
+                    {passengerIds.map((passengerId) => {
+                      const passengerLabel = getPassengerDisplayName(passengerId);
+
+                      return (
+                      <DraggablePublisherChip
+                        isDragging={dragState?.passengerId === passengerId}
+                        isOverCapacity={isOverCapacity}
                         key={passengerId}
+                        label={passengerLabel}
+                        onDragEnd={handleDragEnd}
+                        onDragFinalize={handleDragFinalize}
+                        onDragMove={handleDragMove}
+                        onDragStart={handleDragStart}
                         onPress={() => openPublisherEditor(passengerId)}
-                        style={({ pressed }) => [
-                          styles.occupiedSeat,
-                          isOverCapacity && styles.occupiedSeatWarning,
-                          pressed && styles.buttonPressed,
-                        ]}>
-                        <Text
-                          style={[
-                            styles.occupiedSeatText,
-                            isOverCapacity && styles.occupiedSeatTextWarning,
-                          ]}>
-                          {getPassengerDisplayName(passengerId)}
-                        </Text>
-                      </Pressable>
-                    ))}
+                        passengerId={passengerId}
+                        vehicleId={vehicle.id}
+                      />
+                      );
+                    })}
 
                     {Array.from({ length: openSeatCount }, (_, index) => (
                       <View key={`${vehicle.id}-open-${index}`} style={styles.openSeat}>
@@ -617,8 +818,103 @@ export function ResultsScreen({
             )}
           </View>
         </ScrollView>
+
+        {dragState && (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.draggedSeatOverlay,
+              {
+                left: dragState.x - 58,
+                top: dragState.y - 22,
+              },
+            ]}>
+            <View
+              style={[
+                styles.occupiedSeat,
+                styles.draggedSeat,
+                dragState.canDrop && styles.draggedSeatCanDrop,
+              ]}>
+              <Text style={styles.occupiedSeatText}>{dragState.label}</Text>
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
+  );
+}
+
+function DraggablePublisherChip({
+  isDragging,
+  isOverCapacity,
+  label,
+  onDragEnd,
+  onDragFinalize,
+  onDragMove,
+  onDragStart,
+  onPress,
+  passengerId,
+  vehicleId,
+}: {
+  isDragging: boolean;
+  isOverCapacity: boolean;
+  label: string;
+  onDragEnd: (passengerId: string, sourceVehicleId: string, x: number, y: number) => void;
+  onDragFinalize: () => void;
+  onDragMove: (x: number, y: number) => void;
+  onDragStart: (
+    passengerId: string,
+    sourceVehicleId: string,
+    label: string,
+    x: number,
+    y: number,
+  ) => void;
+  onPress: () => void;
+  passengerId: string;
+  vehicleId: string;
+}) {
+  const dragGesture = Gesture.Pan()
+    .activateAfterLongPress(240)
+    .onStart((event) => {
+      runOnJS(onDragStart)(
+        passengerId,
+        vehicleId,
+        label,
+        event.absoluteX,
+        event.absoluteY,
+      );
+    })
+    .onUpdate((event) => {
+      runOnJS(onDragMove)(event.absoluteX, event.absoluteY);
+    })
+    .onEnd((event) => {
+      runOnJS(onDragEnd)(passengerId, vehicleId, event.absoluteX, event.absoluteY);
+    })
+    .onFinalize(() => {
+      runOnJS(onDragFinalize)();
+    });
+
+  return (
+    <GestureDetector gesture={dragGesture}>
+      <Pressable
+        accessibilityLabel={`Edit ${label}`}
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.occupiedSeat,
+          isOverCapacity && styles.occupiedSeatWarning,
+          isDragging && styles.occupiedSeatDragging,
+          pressed && styles.buttonPressed,
+        ]}>
+        <Text
+          style={[
+            styles.occupiedSeatText,
+            isOverCapacity && styles.occupiedSeatTextWarning,
+          ]}>
+          {label}
+        </Text>
+      </Pressable>
+    </GestureDetector>
   );
 }
 

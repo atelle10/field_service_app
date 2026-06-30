@@ -34,6 +34,7 @@ import {
   deleteAllPublisherProfilesFromSessionState,
   type GroupSessionState,
   markResultsStale,
+  movePassengerToVehicleInResultsState,
   removePublisherProfileFromSessionState,
   restorePassengerDefaultLabelInResultsState,
   resizeVehicles,
@@ -80,6 +81,7 @@ type GroupSessionContextValue = {
   preferences: AppPreferences;
   publisherProfiles: ActiveResultsState['publisherProfiles'];
   recalculateDistribution: () => void;
+  movePassengerToVehicle: (passengerId: string, targetVehicleId: string) => void;
   removePublisherProfile: (publisherId: string) => void;
   restorePassengerDefaultLabel: (passengerId: string) => void;
   resultsHistory: ResultsHistoryEntry[];
@@ -477,6 +479,23 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const movePassengerToVehicle = (passengerId: string, targetVehicleId: string) => {
+    setState((currentState) => {
+      if (!currentState.activeSession) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        activeSession: movePassengerToVehicleInResultsState(
+          currentState.activeSession,
+          passengerId,
+          targetVehicleId,
+        ),
+      };
+    });
+  };
+
   const assignPublisherName = (passengerId: string, name: string) => {
     setState((currentState) => {
       if (!currentState.activeSession) {
@@ -671,6 +690,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         dismissDestructiveActionConfirmation,
         dismissStorageActionFeedback,
         hasActiveSession: state.activeSession !== null,
+        movePassengerToVehicle,
         preferences: state.preferences,
         publisherProfiles: state.publisherProfiles,
         recalculateDistribution,

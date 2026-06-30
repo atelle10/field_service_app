@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { GroupSessionProvider } from '@/context/group-session-context';
 import { GlobalDestructiveActionConfirmationModal } from '@/views/destructive-action-confirmation-modal';
@@ -7,11 +8,13 @@ import { GlobalStorageActionFeedbackModal } from '@/views/storage-action-feedbac
 
 export default function RootLayout() {
   return (
-    <GroupSessionProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-      <GlobalDestructiveActionConfirmationModal />
-      <GlobalStorageActionFeedbackModal />
-      <StatusBar style="light" />
-    </GroupSessionProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <GroupSessionProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+        <GlobalDestructiveActionConfirmationModal />
+        <GlobalStorageActionFeedbackModal />
+        <StatusBar style="light" />
+      </GroupSessionProvider>
+    </GestureHandlerRootView>
   );
 }

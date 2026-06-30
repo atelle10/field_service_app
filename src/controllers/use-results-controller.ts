@@ -12,6 +12,7 @@ export function useResultsController() {
     assignPublisherProfile,
     clearPersistentCache,
     hasActiveSession,
+    movePassengerToVehicle,
     preferences,
     recalculateDistribution,
     refreshStorageUsage,
@@ -76,6 +77,7 @@ export function useResultsController() {
     goToOptions,
     hasActiveSession,
     isLoading: activeSession?.isLoading ?? false,
+    movePassengerToVehicle,
     preferences,
     publisherCount: activeSession?.publisherCount ?? 1,
     publisherProfiles: getSortedPublishers(
