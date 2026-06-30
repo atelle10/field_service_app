@@ -1,0 +1,162 @@
+import { StyleSheet } from 'react-native';
+
+import { colors, radii } from '@/styles/theme';
+
+export const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    gap: 16,
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+    paddingTop: 28,
+  },
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  menuButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+  },
+  titlePanel: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  section: {
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.medium,
+    backgroundColor: colors.surfaceStrong,
+    padding: 14,
+  },
+  optionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  optionTitle: {
+    color: colors.text,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  infoButton: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.mint,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+  },
+  infoBlock: {
+    gap: 6,
+  },
+  infoText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  applyNote: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  capacityControl: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 18,
+  },
+  stepperButton: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.deepForest,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+  },
+  capacityValue: {
+    minWidth: 42,
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  strategyButton: {
+    flex: 1,
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 10,
+  },
+  strategyButtonActive: {
+    borderColor: colors.mint,
+    backgroundColor: colors.deepForest,
+  },
+  strategyButtonText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  strategyButtonTextActive: {
+    color: colors.text,
+  },
+  toggleRow: {
+    minHeight: 44,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  toggleLabel: {
+    color: colors.text,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  buttonPressed: {
+    opacity: 0.82,
+  },
+});
