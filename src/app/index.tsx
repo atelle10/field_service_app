@@ -10,7 +10,7 @@ export default function StartScreen() {
       <View style={styles.content}>
         <Image
           accessibilityLabel="Field Service Assistant logo"
-          source={require('../assets/Field Service Assistant logo 2.png')}
+          source={require('../assets/field_service_assistant_logo_2.png')}
           style={styles.logo}
         />
         <Pressable
