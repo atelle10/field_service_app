@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 
 import { useGroupSession } from '@/context/group-session-context';
+import type { PublisherProfile } from '@/models/group-assignment';
 import { getPassengerDisplayName as getPassengerDisplayNameFromState } from '@/services/group-session-service';
 
 export function useResultsController() {
@@ -11,6 +12,7 @@ export function useResultsController() {
     assignPublisherProfile,
     clearPersistentCache,
     hasActiveSession,
+    preferences,
     recalculateDistribution,
     refreshStorageUsage,
     restorePassengerDefaultLabel,
@@ -45,6 +47,10 @@ export function useResultsController() {
     router.navigate('/publishers');
   };
 
+  const goToOptions = () => {
+    router.navigate('/options');
+  };
+
   const getPassengerDisplayName = (passengerId: string) => {
     if (!activeSession) {
       return passengerId.replace('publisher-', 'Publisher ');
@@ -67,10 +73,15 @@ export function useResultsController() {
     hasAssignedPublisherProfile,
     goHome,
     goToPublishers,
+    goToOptions,
     hasActiveSession,
     isLoading: activeSession?.isLoading ?? false,
+    preferences,
     publisherCount: activeSession?.publisherCount ?? 1,
-    publisherProfiles: activeSession?.publisherProfiles ?? [],
+    publisherProfiles: getSortedPublishers(
+      activeSession?.publisherProfiles ?? [],
+      preferences.sortPublishersAlphabetically,
+    ),
     recalculateDistribution,
     refreshStorageUsage,
     rerunPromptVisible: activeSession?.rerunPromptVisible ?? false,
@@ -86,4 +97,15 @@ export function useResultsController() {
     vehicleCount: activeSession?.vehicles.length ?? 1,
     vehicles: activeSession?.vehicles ?? [],
   };
+}
+
+function getSortedPublishers(
+  publisherProfiles: PublisherProfile[],
+  sortAlphabetically: boolean,
+) {
+  if (!sortAlphabetically) {
+    return publisherProfiles;
+  }
+
+  return [...publisherProfiles].sort((a, b) => a.name.localeCompare(b.name));
 }

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  type AppPreferences,
   publisherCountOptions,
   type DistributionResponse,
   type PublisherProfile,
@@ -35,7 +36,9 @@ type ResultsScreenProps = {
   hasAssignedPublisherProfile: (passengerId: string) => boolean;
   goHome: () => void;
   goToPublishers: () => void;
+  goToOptions: () => void;
   isLoading: boolean;
+  preferences: AppPreferences;
   publisherCount: number;
   publisherProfiles: PublisherProfile[];
   recalculateDistribution: () => void;
@@ -62,7 +65,9 @@ export function ResultsScreen({
   hasAssignedPublisherProfile,
   goHome,
   goToPublishers,
+  goToOptions,
   isLoading,
+  preferences,
   publisherCount,
   publisherProfiles,
   recalculateDistribution,
@@ -85,11 +90,22 @@ export function ResultsScreen({
   const [publisherNameInput, setPublisherNameInput] = useState('');
   const [recalculatePulse] = useState(() => new Animated.Value(1));
   const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
-  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(
+    preferences.summaryStartsExpanded,
+  );
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
   const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
   const recalculateIconColor = rerunPromptVisible ? colors.mint : colors.textSubtle;
+  const visibleVehicles = preferences.showUnusedVehicles
+    ? vehicles
+    : vehicles.filter((vehicle) => {
+        const assignment = distribution?.assignments.find(
+          (vehicleAssignment) => vehicleAssignment.vehicleId === vehicle.id,
+        );
+
+        return (assignment?.passengerIds.length ?? 0) > 0;
+      });
 
   useEffect(() => {
     if (!rerunPromptVisible) {
@@ -229,7 +245,7 @@ export function ResultsScreen({
           onClearCache={clearPersistentCache}
           onSelectHome={goHome}
           onSelectPublishers={goToPublishers}
-          onSelectOption={() => undefined}
+          onSelectOptions={goToOptions}
           storageUsageBytes={storageUsageBytes}
         />
       )}
@@ -407,7 +423,7 @@ export function ResultsScreen({
           )}
 
           <View style={styles.vehicleList}>
-            {vehicles.map((vehicle) => {
+            {visibleVehicles.map((vehicle) => {
               const assignment = distribution?.assignments.find(
                 (vehicleAssignment) => vehicleAssignment.vehicleId === vehicle.id,
               );
@@ -588,7 +604,7 @@ export function ResultsScreen({
           </View>
 
           <View style={styles.storageFooter}>
-            {distribution && (
+            {distribution && !preferences.autoSaveResults && (
               <Pressable
                 accessibilityRole="button"
                 onPress={saveCurrentResult}

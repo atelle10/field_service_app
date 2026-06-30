@@ -27,7 +27,7 @@ type AppMenuDrawerProps = {
   onClearCache: () => void | Promise<void>;
   onSelectHome: () => void;
   onSelectPublishers: () => void;
-  onSelectOption: () => void;
+  onSelectOptions: () => void;
   storageUsageBytes: number;
 };
 
@@ -36,7 +36,7 @@ export function AppMenuDrawer({
   onClose,
   onSelectHome,
   onSelectPublishers,
-  onSelectOption,
+  onSelectOptions,
   storageUsageBytes,
 }: AppMenuDrawerProps) {
   const insets = useSafeAreaInsets();
@@ -103,18 +103,25 @@ export function AppMenuDrawer({
           <Text style={styles.optionText}>Home</Text>
         </Pressable>
 
-        {menuOptions.map(({ Icon, label }) => (
-          <Pressable
-            accessibilityRole="button"
-            key={label}
-            onPress={() =>
-              closeDrawer(label === 'Publishers' ? onSelectPublishers : onSelectOption)
-            }
-            style={({ pressed }) => [styles.option, pressed && styles.buttonPressed]}>
-            <Icon color={colors.text} size={16} strokeWidth={2.2} />
-            <Text style={styles.optionText}>{label}</Text>
-          </Pressable>
-        ))}
+        {menuOptions.map(({ Icon, label }) => {
+          const onSelect =
+            label === 'Publishers'
+              ? onSelectPublishers
+              : label === 'Options'
+                ? onSelectOptions
+                : undefined;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={label}
+              onPress={() => closeDrawer(onSelect)}
+              style={({ pressed }) => [styles.option, pressed && styles.buttonPressed]}>
+              <Icon color={colors.text} size={16} strokeWidth={2.2} />
+              <Text style={styles.optionText}>{label}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={[styles.drawerFooter, { paddingBottom: insets.bottom + 16 }]}>
