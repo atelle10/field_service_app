@@ -28,7 +28,7 @@ export function useVehicleSelectionController() {
       return;
     }
 
-    router.push('/results');
+    router.replace('/results');
   };
 
   return {

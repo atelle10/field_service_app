@@ -7,7 +7,7 @@ export function usePublisherSelectionController() {
   const [publisherCount, setPublisherCount] = useState(1);
 
   const confirmPublisherCount = () => {
-    router.push({
+    router.replace({
       pathname: '/vehicles',
       params: { publishers: String(publisherCount) },
     });

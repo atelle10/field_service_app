@@ -15,7 +15,7 @@ export default function StartScreen() {
         />
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push('/select')}
+          onPress={() => router.replace('/select')}
           style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}>
           <Text style={styles.startButtonText}>Start</Text>
         </Pressable>
