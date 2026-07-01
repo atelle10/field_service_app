@@ -49,7 +49,7 @@ export default function StartScreen() {
       <View style={styles.content}>
         <Image
           accessibilityLabel={translate(preferences.language, 'appLogo')}
-          source={require('../assets/field_service_assistant_logo_2.png')}
+          source={require('../assets/service_group_planner_2.png')}
           style={styles.logo}
         />
         <Pressable

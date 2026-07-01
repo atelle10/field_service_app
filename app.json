@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "field_service_app",
-    "slug": "field_service_app",
+    "name": "Service Group Planner",
+    "slug": "service-group-planner",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/field_service_assistant_logo_3.png",
-    "scheme": "fieldserviceapp",
+    "scheme": "servicegroupplanner",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./src/assets/field_service_assistant_1024.png",

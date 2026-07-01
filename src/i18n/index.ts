@@ -14,10 +14,10 @@ const translations = {
     addPublisher: 'Add Publisher',
     algorithmDetails: 'Distribution algorithm details',
     appDescription:
-      'Field Service Assistant helps organize field service groups by assigning publishers to vehicles and overseers, then allowing the distribution to be reviewed, adjusted, saved, and restored later.',
+      'Service Group Planner helps organize field service groups by assigning publishers to vehicles and overseers, then allowing the distribution to be reviewed, adjusted, saved, and restored later.',
     appOpenSource:
       'This app is open-source. The project source is available on GitHub.',
-    appLogo: 'Field Service Assistant logo',
+    appLogo: 'Service Group Planner logo',
     autoSaveResults: 'Auto-save Results',
     autoSaveFailed: 'Auto-save failed',
     cacheCleared: 'Cache cleared',
@@ -91,7 +91,7 @@ const translations = {
     openMenu: 'Open menu',
     openSourceCredits: 'Open Source Credits',
     openSourceIntro:
-      'Field Service Assistant uses open-source libraries and frameworks, including:',
+      'Service Group Planner uses open-source libraries and frameworks, including:',
     options: 'Options',
     publisher: 'publisher',
     publisherName: 'Publisher name',
@@ -153,10 +153,10 @@ const translations = {
     addPublisher: 'Agregar publicador',
     algorithmDetails: 'Detalles del algoritmo de distribución',
     appDescription:
-      'Field Service Assistant ayuda a organizar grupos de servicio del campo asignando publicadores a vehículos y encargados, y permite revisar, ajustar, guardar y restaurar la distribución más tarde.',
+      'Service Group Planner ayuda a organizar grupos de servicio del campo asignando publicadores a vehículos y encargados, y permite revisar, ajustar, guardar y restaurar la distribución más tarde.',
     appOpenSource:
       'Esta app es de código abierto. El código del proyecto está disponible en GitHub.',
-    appLogo: 'Logo de Field Service Assistant',
+    appLogo: 'Logo de Service Group Planner',
     autoSaveResults: 'Guardar resultados automáticamente',
     autoSaveFailed: 'Error al guardar automáticamente',
     cacheCleared: 'Caché borrada',
@@ -231,7 +231,7 @@ const translations = {
     openMenu: 'Abrir menú',
     openSourceCredits: 'Créditos de código abierto',
     openSourceIntro:
-      'Field Service Assistant usa bibliotecas y frameworks de código abierto, incluyendo:',
+      'Service Group Planner usa bibliotecas y frameworks de código abierto, incluyendo:',
     options: 'Opciones',
     publisher: 'publicador',
     publisherName: 'Nombre del publicador',

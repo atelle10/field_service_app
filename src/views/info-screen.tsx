@@ -80,7 +80,7 @@ export function InfoScreen({
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.appName}>Field Service Assistant</Text>
+            <Text style={styles.appName}>Service Group Planner</Text>
             <Text style={styles.metaText}>{t('version', { version: appVersion })}</Text>
             <Text style={styles.metaText}>© 2026 Andrew Tellez</Text>
           </View>

@@ -1,4 +1,4 @@
-# Field Service Assistant
+# Service Group Planner
 
 Expo iOS app for organizing field service groups and leader assignments.
 
