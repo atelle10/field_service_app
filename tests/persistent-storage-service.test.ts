@@ -8,11 +8,15 @@ import {
   DistributionStrategy,
 } from '@/models/group-assignment';
 import { Language } from '@/i18n';
-import type { ResultsHistoryEntry } from '@/services/group-session-service';
+import type {
+  ActiveResultsState,
+  ResultsHistoryEntry,
+} from '@/services/group-session-service';
 import {
   estimateStorageBytes,
   mergePersistedPreferences,
   mergePersistedPublishers,
+  serializePersistentActiveSession,
   serializePersistentPreferences,
   serializePersistentPublishers,
   serializePersistentResults,
@@ -53,6 +57,38 @@ describe('persistent storage service', () => {
     ];
 
     assert.equal(serializePersistentResults(results), JSON.stringify(results));
+  });
+
+  it('serializes active session snapshots as JSON', () => {
+    const activeSession: ActiveResultsState = {
+      distribution: {
+        strategy: DistributionStrategy.MinimizeCars,
+        assignments: [],
+        summary: {
+          passengerCount: 2,
+          vehicleCount: 1,
+          vehiclesUsed: 1,
+          totalCapacity: 5,
+          unusedSeats: 3,
+        },
+      },
+      errorMessage: '',
+      isLoading: false,
+      passengerPublisherIds: {},
+      publisherCount: 2,
+      publisherProfiles: [],
+      rerunPromptVisible: false,
+      serviceSelections: {},
+      serviceViewEnabled: false,
+      staleMessage: '',
+      strategy: DistributionStrategy.MinimizeCars,
+      vehicles: [{ id: 'vehicle-1', label: 'Vehicle 1', capacity: 5 }],
+    };
+
+    assert.equal(
+      serializePersistentActiveSession(activeSession),
+      JSON.stringify(activeSession),
+    );
   });
 
   it('estimates UTF-8 storage bytes from serialized values', () => {

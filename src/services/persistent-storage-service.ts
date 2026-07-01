@@ -7,14 +7,19 @@ import {
   type PublisherProfile,
 } from '@/models/group-assignment';
 import { isLanguageCode, Language } from '@/i18n';
-import type { ResultsHistoryEntry } from '@/services/group-session-service';
+import type {
+  ActiveResultsState,
+  ResultsHistoryEntry,
+} from '@/services/group-session-service';
 
+const ACTIVE_SESSION_STORAGE_KEY = 'fieldServiceAssistant:v1:activeSession';
 const PUBLISHERS_STORAGE_KEY = 'fieldServiceAssistant:v1:publishers';
 const SAVED_RESULTS_STORAGE_KEY = 'fieldServiceAssistant:v1:savedResults';
 const PREFERENCES_STORAGE_KEY = 'fieldServiceAssistant:v1:preferences';
 const START_SCREEN_STORAGE_KEY = 'fieldServiceAssistant:v1:startScreenSeen';
 const LANGUAGE_SELECTED_STORAGE_KEY = 'fieldServiceAssistant:v1:languageSelected';
 const APP_STORAGE_KEYS = [
+  ACTIVE_SESSION_STORAGE_KEY,
   PUBLISHERS_STORAGE_KEY,
   SAVED_RESULTS_STORAGE_KEY,
   PREFERENCES_STORAGE_KEY,
@@ -25,6 +30,7 @@ const APP_STORAGE_KEYS = [
 type AsyncStorageModule = typeof AsyncStorageStatic;
 
 export type PersistedGroupData = {
+  activeSession: ActiveResultsState | null;
   hasSeenStartScreen: boolean;
   hasSelectedLanguage: boolean;
   preferences: AppPreferences;
@@ -36,6 +42,7 @@ export type PersistedGroupData = {
 export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
   const asyncStorage = await getAsyncStorage();
   const [
+    [, activeSessionValue],
     [, publishersValue],
     [, savedResultsValue],
     [, preferencesValue],
@@ -43,6 +50,7 @@ export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
     [, languageSelectedValue],
   ] =
     await asyncStorage.multiGet([
+      ACTIVE_SESSION_STORAGE_KEY,
       PUBLISHERS_STORAGE_KEY,
       SAVED_RESULTS_STORAGE_KEY,
       PREFERENCES_STORAGE_KEY,
@@ -51,12 +59,14 @@ export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
     ]);
 
   return {
+    activeSession: parseActiveSession(activeSessionValue),
     hasSeenStartScreen: startScreenSeenValue === 'true',
     hasSelectedLanguage: languageSelectedValue === 'true',
     preferences: parseAppPreferences(preferencesValue),
     publisherProfiles: parsePublisherProfiles(publishersValue),
     savedResults: parseSavedResults(savedResultsValue),
     storageUsageBytes: estimateStorageBytes([
+      activeSessionValue ?? '',
       publishersValue ?? '',
       savedResultsValue ?? '',
       preferencesValue ?? '',
@@ -64,6 +74,21 @@ export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
       languageSelectedValue ?? '',
     ]),
   };
+}
+
+export async function saveActiveSession(activeSession: ActiveResultsState | null) {
+  const asyncStorage = await getAsyncStorage();
+
+  if (activeSession) {
+    await asyncStorage.setItem(
+      ACTIVE_SESSION_STORAGE_KEY,
+      serializePersistentActiveSession(activeSession),
+    );
+  } else {
+    await asyncStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+  }
+
+  return getPersistentStorageUsage();
 }
 
 export async function savePublisherProfiles(publisherProfiles: PublisherProfile[]) {
@@ -151,6 +176,10 @@ export function serializePersistentPreferences(preferences: AppPreferences) {
   return JSON.stringify(preferences);
 }
 
+export function serializePersistentActiveSession(activeSession: ActiveResultsState) {
+  return JSON.stringify(activeSession);
+}
+
 export function mergePersistedPreferences(value: unknown): AppPreferences {
   if (typeof value !== 'object' || value === null) {
     return DEFAULT_APP_PREFERENCES;
@@ -213,6 +242,40 @@ function parseAppPreferences(value: string | null) {
   } catch {
     return DEFAULT_APP_PREFERENCES;
   }
+}
+
+function parseActiveSession(value: string | null): ActiveResultsState | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    return isActiveResultsState(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isActiveResultsState(value: unknown): value is ActiveResultsState {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<ActiveResultsState>;
+
+  return (
+    typeof candidate.publisherCount === 'number' &&
+    Array.isArray(candidate.vehicles) &&
+    typeof candidate.passengerPublisherIds === 'object' &&
+    candidate.passengerPublisherIds !== null &&
+    Array.isArray(candidate.publisherProfiles) &&
+    typeof candidate.rerunPromptVisible === 'boolean' &&
+    typeof candidate.serviceViewEnabled === 'boolean' &&
+    typeof candidate.serviceSelections === 'object' &&
+    candidate.serviceSelections !== null
+  );
 }
 
 export function mergePersistedPublishers(

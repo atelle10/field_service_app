@@ -19,6 +19,7 @@ import {
   getPersistentStorageUsage,
   loadPersistedGroupData,
   mergePersistedPublishers,
+  saveActiveSession,
   saveAppPreferences,
   savePublisherProfiles,
   saveResultHistoryEntries,
@@ -155,6 +156,13 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     setStorageUsageBytes(nextStorageUsageBytes);
   }, []);
 
+  const persistActiveSessionSnapshot = useCallback(
+    async (activeSession: ActiveResultsState | null) => {
+      await saveActiveSession(activeSession);
+    },
+    [],
+  );
+
   const runDestructiveAction = useCallback(
     (
       confirmation: DestructiveActionConfirmation,
@@ -179,13 +187,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       setHasSeenStartScreen(false);
       setState((currentState) => ({
         ...currentState,
-        activeSession: currentState.activeSession
-          ? {
-              ...currentState.activeSession,
-              passengerPublisherIds: {},
-              publisherProfiles: [],
-            }
-          : currentState.activeSession,
+        activeSession: null,
         preferences: DEFAULT_APP_PREFERENCES,
         publisherProfiles: [],
         savedResults: [],
@@ -374,6 +376,14 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    if (!hasHydratedPersistedData) {
+      return;
+    }
+
+    void persistActiveSessionSnapshot(state.activeSession);
+  }, [hasHydratedPersistedData, persistActiveSessionSnapshot, state.activeSession]);
+
+  useEffect(() => {
     let mounted = true;
 
     loadPersistedGroupData()
@@ -382,24 +392,29 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setState((currentState) => ({
-          ...currentState,
-          activeSession: currentState.activeSession
-            ? {
-                ...currentState.activeSession,
-                publisherProfiles: mergePersistedPublishers(
-                  currentState.activeSession.publisherProfiles,
-                  persistedData.publisherProfiles,
-                ),
-              }
-            : currentState.activeSession,
-          publisherProfiles: mergePersistedPublishers(
+        setState((currentState) => {
+          const publisherProfiles = mergePersistedPublishers(
             currentState.publisherProfiles,
             persistedData.publisherProfiles,
-          ),
-          preferences: persistedData.preferences,
-          savedResults: persistedData.savedResults,
-        }));
+          );
+          const activeSession = persistedData.activeSession
+            ? {
+                ...persistedData.activeSession,
+                publisherProfiles: mergePersistedPublishers(
+                  persistedData.activeSession.publisherProfiles,
+                  publisherProfiles,
+                ),
+              }
+            : currentState.activeSession;
+
+          return {
+            ...currentState,
+            activeSession,
+            publisherProfiles,
+            preferences: persistedData.preferences,
+            savedResults: persistedData.savedResults,
+          };
+        });
         setHasSelectedLanguage(persistedData.hasSelectedLanguage);
         setHasSeenStartScreen(persistedData.hasSeenStartScreen);
         setStorageUsageBytes(persistedData.storageUsageBytes);
