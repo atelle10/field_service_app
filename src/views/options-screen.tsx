@@ -9,7 +9,7 @@ import {
   type AppPreferences,
 } from '@/models/group-assignment';
 import { colors } from '@/styles/theme';
-import { AppMenuDrawer } from '@/views/app-menu-drawer';
+import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/options-screen.styles';
 
 type InfoKey = 'capacity' | 'strategy' | null;
@@ -63,6 +63,7 @@ export function OptionsScreen({
           onSelectPublishers={goToPublishers}
         />
       )}
+      {!menuOpen && <DrawerEdgeSwipeArea onOpen={() => setMenuOpen(true)} />}
 
       <View style={styles.screen}>
         <ScrollView

@@ -10,7 +10,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GroupSessionProvider>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack screenOptions={{ gestureEnabled: false, headerShown: false }} />
         <GlobalDestructiveActionConfirmationModal />
         <GlobalStorageActionFeedbackModal />
         <StatusBar style="light" />

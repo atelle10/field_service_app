@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/styles/theme';
-import { AppMenuDrawer } from '@/views/app-menu-drawer';
+import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/info-screen.styles';
 
 const openSourceCredits = [
@@ -54,6 +54,7 @@ export function InfoScreen({
           onSelectPublishers={goToPublishers}
         />
       )}
+      {!menuOpen && <DrawerEdgeSwipeArea onOpen={() => setMenuOpen(true)} />}
 
       <View style={styles.screen}>
         <ScrollView

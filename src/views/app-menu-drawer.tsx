@@ -16,6 +16,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radii } from '@/styles/theme';
@@ -29,6 +31,30 @@ const menuOptions = [
 const headerHeight = 44;
 const headerTopPadding = 28;
 const menuTextSize = 13;
+const edgeSwipeWidth = 32;
+const edgeSwipeThreshold = 42;
+const verticalDriftLimit = 70;
+
+type DrawerEdgeSwipeAreaProps = {
+  onOpen: () => void;
+};
+
+export function DrawerEdgeSwipeArea({ onOpen }: DrawerEdgeSwipeAreaProps) {
+  const openGesture = Gesture.Pan()
+    .activeOffsetX([12, 999])
+    .failOffsetY([-verticalDriftLimit, verticalDriftLimit])
+    .onEnd((event) => {
+      if (event.translationX > edgeSwipeThreshold) {
+        runOnJS(onOpen)();
+      }
+    });
+
+  return (
+    <GestureDetector gesture={openGesture}>
+      <View pointerEvents="box-only" style={styles.leftEdgeSwipeArea} />
+    </GestureDetector>
+  );
+}
 
 type AppMenuDrawerProps = {
   onClose: () => void;
@@ -80,6 +106,14 @@ export function AppMenuDrawer({
     inputRange: [-1, 0],
     outputRange: [-width, 0],
   });
+  const closeGesture = Gesture.Pan()
+    .activeOffsetX([-999, -12])
+    .failOffsetY([-verticalDriftLimit, verticalDriftLimit])
+    .onEnd((event) => {
+      if (event.translationX < -edgeSwipeThreshold) {
+        runOnJS(closeDrawer)();
+      }
+    });
 
   return (
     <Animated.View
@@ -135,6 +169,10 @@ export function AppMenuDrawer({
           );
         })}
       </View>
+
+      <GestureDetector gesture={closeGesture}>
+        <View pointerEvents="box-only" style={styles.rightEdgeSwipeArea} />
+      </GestureDetector>
     </Animated.View>
   );
 }
@@ -149,6 +187,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: 24,
     zIndex: 20,
+  },
+  leftEdgeSwipeArea: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: edgeSwipeWidth,
+    zIndex: 10,
+  },
+  rightEdgeSwipeArea: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: edgeSwipeWidth,
+    zIndex: 21,
   },
   header: {
     minHeight: headerHeight,

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ResultsHistoryEntry } from '@/services/group-session-service';
 import { colors } from '@/styles/theme';
-import { AppMenuDrawer } from '@/views/app-menu-drawer';
+import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/history-screen.styles';
 
 type HistoryScreenProps = {
@@ -58,6 +58,7 @@ export function HistoryScreen({
           onSelectPublishers={goToPublishers}
         />
       )}
+      {!menuOpen && <DrawerEdgeSwipeArea onOpen={() => setMenuOpen(true)} />}
 
       <View style={styles.screen}>
         <ScrollView

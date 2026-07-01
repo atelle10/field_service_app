@@ -40,7 +40,7 @@ import {
   vehicleCountOptions,
 } from '@/models/group-assignment';
 import { colors } from '@/styles/theme';
-import { AppMenuDrawer } from '@/views/app-menu-drawer';
+import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/results-screen.styles';
 
 type ActiveCountPicker = 'publishers' | 'vehicles' | null;
@@ -566,6 +566,7 @@ export function ResultsScreen({
           onSelectOptions={goToOptions}
         />
       )}
+      {!menuOpen && <DrawerEdgeSwipeArea onOpen={() => setMenuOpen(true)} />}
 
       <PublisherEditorModal
         canRestoreDefault={

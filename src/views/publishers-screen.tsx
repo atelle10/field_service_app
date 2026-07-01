@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { PublisherProfile } from '@/models/group-assignment';
 import { colors } from '@/styles/theme';
-import { AppMenuDrawer } from '@/views/app-menu-drawer';
+import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/publishers-screen.styles';
 
 type PublishersScreenProps = {
@@ -68,6 +68,7 @@ export function PublishersScreen({
           onSelectOptions={goToOptions}
         />
       )}
+      {!menuOpen && <DrawerEdgeSwipeArea onOpen={() => setMenuOpen(true)} />}
 
       <AddPublisherModal
         canConfirm={canAddPublisher}
