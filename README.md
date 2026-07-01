@@ -1,3 +1,7 @@
+<img width="250" height="250" alt="field_service_assistant1024" src="https://github.com/user-attachments/assets/c3856fe4-9de9-49e1-bc91-37dec7d6c8cc" />
+
+
+
 # Service Group Planner
 
 Service Group Planner is an Expo React Native app for organizing field service groups into vehicles. It helps a user choose the number of publishers and vehicles, generate a suggested distribution, edit the result, save useful assignments, and use the active group during service.
