@@ -202,6 +202,8 @@ export const styles = StyleSheet.create({
     minHeight: 38,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
     borderWidth: 1,
     borderColor: colors.mint,
     borderRadius: radii.small,
@@ -242,6 +244,10 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 8,
+  },
+  serviceFooterButtonWithIcon: {
+    flexDirection: 'row',
+    gap: 8,
   },
   serviceFooterButtonActive: {
     borderColor: colors.mint,

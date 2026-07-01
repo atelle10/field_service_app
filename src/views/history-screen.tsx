@@ -96,7 +96,7 @@ export function HistoryScreen({
             <View style={styles.emptyPanel}>
               <Text style={styles.emptyTitle}>No saved results</Text>
               <Text style={styles.emptyText}>
-                Saved distributions will appear here after you tap Save Result.
+                Saved distributions will appear here after you tap Save.
               </Text>
             </View>
           )}

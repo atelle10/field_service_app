@@ -6,7 +6,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Check, History, Menu, Pencil, RefreshCcw, X } from 'lucide-react-native';
+import {
+  Check,
+  History,
+  ListRestart,
+  Menu,
+  NotebookPen,
+  Pencil,
+  RefreshCcw,
+  Save,
+  X,
+} from 'lucide-react-native';
 import {
   ActivityIndicator,
   Animated as RNAnimated,
@@ -756,7 +766,12 @@ export function ResultsScreen({
             <Pressable
               accessibilityRole="button"
               onPress={startOver}
-              style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}>
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.actionButtonWithIcon,
+                pressed && styles.buttonPressed,
+              ]}>
+              <ListRestart color={colors.text} size={16} strokeWidth={2.5} />
               <Text style={styles.actionButtonText}>Start Over</Text>
             </Pressable>
 
@@ -1064,7 +1079,8 @@ export function ResultsScreen({
                     styles.saveResultButton,
                     pressed && styles.buttonPressed,
                   ]}>
-                  <Text style={styles.saveResultButtonText}>Save Result</Text>
+                  <Save color={colors.mint} size={16} strokeWidth={2.5} />
+                  <Text style={styles.saveResultButtonText}>Save</Text>
                 </Pressable>
               )}
 
@@ -1085,10 +1101,22 @@ export function ResultsScreen({
                 onPress={toggleServiceView}
                 style={({ pressed }) => [
                   styles.serviceFooterButton,
+                  styles.serviceFooterButtonWithIcon,
                   serviceViewEnabled && styles.serviceFooterButtonActive,
                   !distribution && styles.footerButtonDisabled,
                   pressed && styles.buttonPressed,
                 ]}>
+                <NotebookPen
+                  color={
+                    distribution
+                      ? serviceViewEnabled
+                        ? colors.text
+                        : colors.mint
+                      : colors.textSubtle
+                  }
+                  size={16}
+                  strokeWidth={2.5}
+                />
                 <Text
                   style={[
                     styles.serviceFooterButtonText,
