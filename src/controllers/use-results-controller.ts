@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { useEffect } from 'react';
 
 import { useGroupSession } from '@/context/group-session-context';
 import type { PublisherProfile } from '@/models/group-assignment';
@@ -25,23 +24,12 @@ export function useResultsController() {
     updateVehicleLabel,
   } = useGroupSession();
 
-  useEffect(() => {
-    if (!hasActiveSession) {
-      router.replace('/select');
-    }
-  }, [hasActiveSession]);
-
   const startOver = () => {
     router.replace('/select');
   };
 
   const goHome = () => {
-    if (hasActiveSession) {
-      router.navigate('/results');
-      return;
-    }
-
-    router.replace('/select');
+    router.navigate('/results');
   };
 
   const goToPublishers = () => {
@@ -88,7 +76,7 @@ export function useResultsController() {
     isLoading: activeSession?.isLoading ?? false,
     movePassengerToVehicle,
     preferences,
-    publisherCount: activeSession?.publisherCount ?? 1,
+    publisherCount: activeSession?.publisherCount ?? 0,
     publisherProfiles: getSortedPublishers(
       activeSession?.publisherProfiles ?? [],
       preferences.sortPublishersAlphabetically,
@@ -104,7 +92,7 @@ export function useResultsController() {
     updateVehicleCount,
     updateVehicleCapacity,
     updateVehicleLabel,
-    vehicleCount: activeSession?.vehicles.length ?? 1,
+    vehicleCount: activeSession?.vehicles.length ?? 0,
     vehicles: activeSession?.vehicles ?? [],
   };
 }

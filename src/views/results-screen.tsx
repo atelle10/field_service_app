@@ -108,6 +108,7 @@ type ResultsScreenProps = {
   errorMessage: string;
   getPassengerDisplayName: (passengerId: string) => string;
   hasAssignedPublisherProfile: (passengerId: string) => boolean;
+  hasActiveSession: boolean;
   goHome: () => void;
   goToHistory: () => void;
   goToInfo: () => void;
@@ -138,6 +139,7 @@ export function ResultsScreen({
   errorMessage,
   getPassengerDisplayName,
   hasAssignedPublisherProfile,
+  hasActiveSession,
   goHome,
   goToHistory,
   goToInfo,
@@ -614,24 +616,40 @@ export function ResultsScreen({
               <View style={styles.countControls}>
                 <Pressable
                   accessibilityRole="button"
+                  disabled={!hasActiveSession}
                   onPress={togglePublisherPicker}
                   style={({ pressed }) => [
                     styles.countButton,
+                    !hasActiveSession && styles.countButtonDisabled,
                     activeCountPicker === 'publishers' && styles.countButtonActive,
                     pressed && styles.buttonPressed,
                   ]}>
-                  <Text style={styles.countButtonText}>Publishers: {publisherCount}</Text>
+                  <Text
+                    style={[
+                      styles.countButtonText,
+                      !hasActiveSession && styles.countButtonTextDisabled,
+                    ]}>
+                    Publishers: {publisherCount}
+                  </Text>
                 </Pressable>
 
                 <Pressable
                   accessibilityRole="button"
+                  disabled={!hasActiveSession}
                   onPress={toggleVehiclePicker}
                   style={({ pressed }) => [
                     styles.countButton,
+                    !hasActiveSession && styles.countButtonDisabled,
                     activeCountPicker === 'vehicles' && styles.countButtonActive,
                     pressed && styles.buttonPressed,
                   ]}>
-                  <Text style={styles.countButtonText}>Vehicles: {vehicleCount}</Text>
+                  <Text
+                    style={[
+                      styles.countButtonText,
+                      !hasActiveSession && styles.countButtonTextDisabled,
+                    ]}>
+                    Vehicles: {vehicleCount}
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -709,6 +727,16 @@ export function ResultsScreen({
           {!!dropWarning && (
             <View style={styles.dragWarningPanel}>
               <Text style={styles.dragWarningText}>{dropWarning}</Text>
+            </View>
+          )}
+
+          {!hasActiveSession && (
+            <View style={styles.emptyResultsPanel}>
+              <Text style={styles.emptyResultsTitle}>No active distribution</Text>
+              <Text style={styles.emptyResultsText}>
+                This home screen is ready, but no publisher or vehicle counts have been
+                selected yet. Use Start Over to begin a new distribution.
+              </Text>
             </View>
           )}
 

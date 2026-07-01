@@ -10,18 +10,12 @@ export function useHistoryController() {
   const {
     deleteAllSavedResults,
     deleteSavedResult,
-    hasActiveSession,
     restoreSavedResult,
     savedResults,
   } = useGroupSession();
 
   const goHome = () => {
-    if (hasActiveSession) {
-      router.navigate('/results');
-      return;
-    }
-
-    router.replace('/select');
+    router.navigate('/results');
   };
 
   const goToHistory = () => {

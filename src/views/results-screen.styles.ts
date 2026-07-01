@@ -65,10 +65,16 @@ export const styles = StyleSheet.create({
     borderColor: colors.mint,
     backgroundColor: colors.deepForest,
   },
+  countButtonDisabled: {
+    opacity: 0.68,
+  },
   countButtonText: {
     color: colors.text,
     fontSize: 13,
     fontWeight: '700',
+  },
+  countButtonTextDisabled: {
+    color: colors.textSubtle,
   },
   dropdownRow: {
     flexDirection: 'row',
@@ -509,6 +515,25 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 18,
     textAlign: 'center',
+  },
+  emptyResultsPanel: {
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.mint,
+    borderRadius: radii.medium,
+    backgroundColor: colors.surface,
+    padding: 18,
+  },
+  emptyResultsTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  emptyResultsText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   draggedSeatOverlay: {
     position: 'absolute',

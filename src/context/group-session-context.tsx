@@ -23,6 +23,7 @@ import {
   savePublisherProfiles,
   saveResultHistoryEntries,
   saveResultHistoryEntry,
+  saveStartScreenSeen,
 } from '@/services/persistent-storage-service';
 import {
   type ActiveResultsState,
@@ -76,12 +77,15 @@ type GroupSessionContextValue = {
     vehicleCount: number,
   ) => BeginDistributionResult;
   clearPersistentCache: () => Promise<void>;
+  completeStartScreen: () => void;
   confirmDestructiveAction: () => void;
   deleteAllPublisherProfiles: () => void;
   destructiveActionConfirmation: DestructiveActionConfirmation | null;
   dismissDestructiveActionConfirmation: () => void;
   dismissStorageActionFeedback: () => void;
+  hasHydratedPersistedData: boolean;
   hasActiveSession: boolean;
+  hasSeenStartScreen: boolean;
   preferences: AppPreferences;
   publisherProfiles: ActiveResultsState['publisherProfiles'];
   recalculateDistribution: () => void;
@@ -113,6 +117,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GroupSessionState>(() =>
     createEmptyGroupSessionState(),
   );
+  const [hasHydratedPersistedData, setHasHydratedPersistedData] = useState(false);
+  const [hasSeenStartScreen, setHasSeenStartScreen] = useState(false);
   const [storageUsageBytes, setStorageUsageBytes] = useState(0);
   const [storageActionFeedback, setStorageActionFeedback] =
     useState<StorageActionFeedback | null>(null);
@@ -375,11 +381,14 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           preferences: persistedData.preferences,
           savedResults: persistedData.savedResults,
         }));
+        setHasSeenStartScreen(persistedData.hasSeenStartScreen);
         setStorageUsageBytes(persistedData.storageUsageBytes);
+        setHasHydratedPersistedData(true);
       })
       .catch(() => {
         if (mounted) {
           setStorageUsageBytes(0);
+          setHasHydratedPersistedData(true);
         }
       });
 
@@ -387,6 +396,17 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       mounted = false;
     };
   }, []);
+
+  const completeStartScreen = () => {
+    setHasSeenStartScreen(true);
+    void saveStartScreenSeen()
+      .then((nextStorageUsageBytes) => {
+        setStorageUsageBytes(nextStorageUsageBytes);
+      })
+      .catch(() => {
+        setStorageUsageBytes(0);
+      });
+  };
 
   const beginNewDistribution = (
     publisherCount: number,
@@ -643,6 +663,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     try {
       const nextStorageUsageBytes = await saveResultHistoryEntry(entry);
       setStorageUsageBytes(nextStorageUsageBytes);
+      setHasSeenStartScreen(false);
       setState((currentState) => ({
         ...currentState,
         savedResults: [...currentState.savedResults, entry],
@@ -794,6 +815,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         assignPublisherProfile,
         beginNewDistribution,
         clearPersistentCache,
+        completeStartScreen,
         confirmDestructiveAction,
         deleteAllPublisherProfiles,
         deleteAllSavedResults,
@@ -801,7 +823,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         destructiveActionConfirmation,
         dismissDestructiveActionConfirmation,
         dismissStorageActionFeedback,
+        hasHydratedPersistedData,
         hasActiveSession: state.activeSession !== null,
+        hasSeenStartScreen,
         movePassengerToVehicle,
         preferences: state.preferences,
         publisherProfiles: state.publisherProfiles,

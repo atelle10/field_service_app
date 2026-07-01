@@ -7,19 +7,13 @@ export function usePublishersController() {
   const {
     addPublisherProfile,
     deleteAllPublisherProfiles,
-    hasActiveSession,
     preferences,
     publisherProfiles,
     removePublisherProfile,
   } = useGroupSession();
 
   const goHome = () => {
-    if (hasActiveSession) {
-      router.navigate('/results');
-      return;
-    }
-
-    router.replace('/select');
+    router.navigate('/results');
   };
 
   const goToPublishers = () => {

@@ -11,15 +11,18 @@ import type { ResultsHistoryEntry } from '@/services/group-session-service';
 const PUBLISHERS_STORAGE_KEY = 'fieldServiceAssistant:v1:publishers';
 const SAVED_RESULTS_STORAGE_KEY = 'fieldServiceAssistant:v1:savedResults';
 const PREFERENCES_STORAGE_KEY = 'fieldServiceAssistant:v1:preferences';
+const START_SCREEN_STORAGE_KEY = 'fieldServiceAssistant:v1:startScreenSeen';
 const APP_STORAGE_KEYS = [
   PUBLISHERS_STORAGE_KEY,
   SAVED_RESULTS_STORAGE_KEY,
   PREFERENCES_STORAGE_KEY,
+  START_SCREEN_STORAGE_KEY,
 ] as const;
 
 type AsyncStorageModule = typeof AsyncStorageStatic;
 
 export type PersistedGroupData = {
+  hasSeenStartScreen: boolean;
   preferences: AppPreferences;
   publisherProfiles: PublisherProfile[];
   savedResults: ResultsHistoryEntry[];
@@ -28,14 +31,21 @@ export type PersistedGroupData = {
 
 export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
   const asyncStorage = await getAsyncStorage();
-  const [[, publishersValue], [, savedResultsValue], [, preferencesValue]] =
+  const [
+    [, publishersValue],
+    [, savedResultsValue],
+    [, preferencesValue],
+    [, startScreenSeenValue],
+  ] =
     await asyncStorage.multiGet([
       PUBLISHERS_STORAGE_KEY,
       SAVED_RESULTS_STORAGE_KEY,
       PREFERENCES_STORAGE_KEY,
+      START_SCREEN_STORAGE_KEY,
     ]);
 
   return {
+    hasSeenStartScreen: startScreenSeenValue === 'true',
     preferences: parseAppPreferences(preferencesValue),
     publisherProfiles: parsePublisherProfiles(publishersValue),
     savedResults: parseSavedResults(savedResultsValue),
@@ -43,6 +53,7 @@ export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
       publishersValue ?? '',
       savedResultsValue ?? '',
       preferencesValue ?? '',
+      startScreenSeenValue ?? '',
     ]),
   };
 }
@@ -88,6 +99,13 @@ export async function saveAppPreferences(preferences: AppPreferences) {
     PREFERENCES_STORAGE_KEY,
     serializePersistentPreferences(preferences),
   );
+
+  return getPersistentStorageUsage();
+}
+
+export async function saveStartScreenSeen() {
+  const asyncStorage = await getAsyncStorage();
+  await asyncStorage.setItem(START_SCREEN_STORAGE_KEY, 'true');
 
   return getPersistentStorageUsage();
 }

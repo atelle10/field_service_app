@@ -1,21 +1,13 @@
 import { router } from 'expo-router';
 import { Linking } from 'react-native';
 
-import { useGroupSession } from '@/context/group-session-context';
 import packageMetadata from '../../package.json';
 
 const repositoryUrl = 'https://github.com/atelle10/field_service_app';
 
 export function useInfoController() {
-  const { hasActiveSession } = useGroupSession();
-
   const goHome = () => {
-    if (hasActiveSession) {
-      router.navigate('/results');
-      return;
-    }
-
-    router.replace('/select');
+    router.navigate('/results');
   };
 
   const goToHistory = () => {

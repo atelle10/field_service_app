@@ -6,19 +6,13 @@ import type { AppPreferences } from '@/models/group-assignment';
 export function useOptionsController() {
   const {
     clearPersistentCache,
-    hasActiveSession,
     preferences,
     storageUsageBytes,
     updateAppPreferences,
   } = useGroupSession();
 
   const goHome = () => {
-    if (hasActiveSession) {
-      router.navigate('/results');
-      return;
-    }
-
-    router.replace('/select');
+    router.navigate('/results');
   };
 
   const goToPublishers = () => {
