@@ -156,6 +156,37 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  storageHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  storageTextPanel: {
+    flex: 1,
+    gap: 4,
+  },
+  storageUsageText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  clearCacheButton: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.dangerText,
+    borderRadius: radii.small,
+    backgroundColor: colors.dangerBackground,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  clearCacheButtonText: {
+    color: colors.dangerText,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   buttonPressed: {
     opacity: 0.82,
   },

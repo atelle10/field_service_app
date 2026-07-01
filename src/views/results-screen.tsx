@@ -104,7 +104,6 @@ function timeSharedValueWithCompletion(
 type ResultsScreenProps = {
   assignPublisherName: (passengerId: string, name: string) => void;
   assignPublisherProfile: (passengerId: string, publisherId: string) => void;
-  clearPersistentCache: () => Promise<void>;
   distribution: DistributionResponse | null;
   errorMessage: string;
   getPassengerDisplayName: (passengerId: string) => string;
@@ -123,7 +122,6 @@ type ResultsScreenProps = {
   restorePassengerDefaultLabel: (passengerId: string) => void;
   saveCurrentResult: () => Promise<void>;
   startOver: () => void;
-  storageUsageBytes: number;
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCount: (vehicleCount: number) => void;
   updateVehicleCapacity: (vehicleId: string, capacity: number) => void;
@@ -135,7 +133,6 @@ type ResultsScreenProps = {
 export function ResultsScreen({
   assignPublisherName,
   assignPublisherProfile,
-  clearPersistentCache,
   distribution,
   errorMessage,
   getPassengerDisplayName,
@@ -154,7 +151,6 @@ export function ResultsScreen({
   restorePassengerDefaultLabel,
   saveCurrentResult,
   startOver,
-  storageUsageBytes,
   updatePublisherCount,
   updateVehicleCount,
   updateVehicleCapacity,
@@ -561,12 +557,10 @@ export function ResultsScreen({
       {menuOpen && (
         <AppMenuDrawer
           onClose={() => setMenuOpen(false)}
-          onClearCache={clearPersistentCache}
           onSelectHome={goHome}
           onSelectHistory={goToHistory}
           onSelectPublishers={goToPublishers}
           onSelectOptions={goToOptions}
-          storageUsageBytes={storageUsageBytes}
         />
       )}
 

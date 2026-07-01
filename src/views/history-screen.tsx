@@ -9,7 +9,6 @@ import { AppMenuDrawer } from '@/views/app-menu-drawer';
 import { styles } from '@/views/history-screen.styles';
 
 type HistoryScreenProps = {
-  clearPersistentCache: () => Promise<void>;
   deleteAllSavedResults: () => void;
   deleteSavedResult: (resultId: string) => void;
   getHistoryPassengerDisplayName: (
@@ -22,11 +21,9 @@ type HistoryScreenProps = {
   goToPublishers: () => void;
   restoreResult: (resultId: string) => void;
   savedResults: ResultsHistoryEntry[];
-  storageUsageBytes: number;
 };
 
 export function HistoryScreen({
-  clearPersistentCache,
   deleteAllSavedResults,
   deleteSavedResult,
   getHistoryPassengerDisplayName,
@@ -36,7 +33,6 @@ export function HistoryScreen({
   goToPublishers,
   restoreResult,
   savedResults,
-  storageUsageBytes,
 }: HistoryScreenProps) {
   const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -52,13 +48,11 @@ export function HistoryScreen({
     <SafeAreaView style={styles.safeArea}>
       {menuOpen && (
         <AppMenuDrawer
-          onClearCache={clearPersistentCache}
           onClose={() => setMenuOpen(false)}
           onSelectHistory={goToHistory}
           onSelectHome={goHome}
           onSelectOptions={goToOptions}
           onSelectPublishers={goToPublishers}
-          storageUsageBytes={storageUsageBytes}
         />
       )}
 

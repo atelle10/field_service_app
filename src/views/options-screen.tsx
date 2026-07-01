@@ -53,13 +53,11 @@ export function OptionsScreen({
     <SafeAreaView style={styles.safeArea}>
       {menuOpen && (
         <AppMenuDrawer
-          onClearCache={clearPersistentCache}
           onClose={() => setMenuOpen(false)}
           onSelectHome={goHome}
           onSelectHistory={goToHistory}
           onSelectOptions={goToOptions}
           onSelectPublishers={goToPublishers}
-          storageUsageBytes={storageUsageBytes}
         />
       )}
 
@@ -220,6 +218,32 @@ export function OptionsScreen({
               value={preferences.confirmDestructiveActions}
             />
           </View>
+
+          <View style={styles.section}>
+            <View style={styles.storageHeader}>
+              <View style={styles.storageTextPanel}>
+                <Text style={styles.optionTitle}>Stored Data</Text>
+                <Text style={styles.storageUsageText}>
+                  {formatStorageUsage(storageUsageBytes)}
+                </Text>
+              </View>
+
+              <Pressable
+                accessibilityLabel="Clear cached app data"
+                accessibilityRole="button"
+                onPress={clearPersistentCache}
+                style={({ pressed }) => [
+                  styles.clearCacheButton,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <Text style={styles.clearCacheButtonText}>Clear Cache</Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.applyNote}>
+              Removes saved publishers, saved results, and preferences from this device.
+            </Text>
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -276,4 +300,12 @@ function PreferenceToggle({
       />
     </View>
   );
+}
+
+function formatStorageUsage(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  return `${(bytes / 1024).toFixed(1)} KB`;
 }

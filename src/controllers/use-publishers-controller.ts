@@ -6,13 +6,11 @@ import type { PublisherProfile } from '@/models/group-assignment';
 export function usePublishersController() {
   const {
     addPublisherProfile,
-    clearPersistentCache,
     deleteAllPublisherProfiles,
     hasActiveSession,
     preferences,
     publisherProfiles,
     removePublisherProfile,
-    storageUsageBytes,
   } = useGroupSession();
 
   const goHome = () => {
@@ -38,7 +36,6 @@ export function usePublishersController() {
 
   return {
     addPublisherProfile,
-    clearPersistentCache,
     deleteAllPublisherProfiles,
     goHome,
     goToHistory,
@@ -49,7 +46,6 @@ export function usePublishersController() {
       preferences.sortPublishersAlphabetically,
     ),
     removePublisherProfile,
-    storageUsageBytes,
   };
 }
 

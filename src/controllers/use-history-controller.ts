@@ -8,13 +8,11 @@ import {
 
 export function useHistoryController() {
   const {
-    clearPersistentCache,
     deleteAllSavedResults,
     deleteSavedResult,
     hasActiveSession,
     restoreSavedResult,
     savedResults,
-    storageUsageBytes,
   } = useGroupSession();
 
   const goHome = () => {
@@ -51,7 +49,6 @@ export function useHistoryController() {
   };
 
   return {
-    clearPersistentCache,
     deleteAllSavedResults,
     deleteSavedResult,
     getHistoryPassengerDisplayName,
@@ -61,7 +58,6 @@ export function useHistoryController() {
     goToPublishers,
     restoreResult,
     savedResults: getSortedSavedResults(savedResults),
-    storageUsageBytes,
   };
 }
 

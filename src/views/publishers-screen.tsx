@@ -10,7 +10,6 @@ import { styles } from '@/views/publishers-screen.styles';
 
 type PublishersScreenProps = {
   addPublisherProfile: (name: string) => void;
-  clearPersistentCache: () => Promise<void>;
   deleteAllPublisherProfiles: () => void;
   goHome: () => void;
   goToHistory: () => void;
@@ -18,12 +17,10 @@ type PublishersScreenProps = {
   goToOptions: () => void;
   publisherProfiles: PublisherProfile[];
   removePublisherProfile: (publisherId: string) => void;
-  storageUsageBytes: number;
 };
 
 export function PublishersScreen({
   addPublisherProfile,
-  clearPersistentCache,
   deleteAllPublisherProfiles,
   goHome,
   goToHistory,
@@ -31,7 +28,6 @@ export function PublishersScreen({
   goToOptions,
   publisherProfiles,
   removePublisherProfile,
-  storageUsageBytes,
 }: PublishersScreenProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newPublisherName, setNewPublisherName] = useState('');
@@ -63,12 +59,10 @@ export function PublishersScreen({
       {menuOpen && (
         <AppMenuDrawer
           onClose={() => setMenuOpen(false)}
-          onClearCache={clearPersistentCache}
           onSelectHome={goHome}
           onSelectHistory={goToHistory}
           onSelectPublishers={goToPublishers}
           onSelectOptions={goToOptions}
-          storageUsageBytes={storageUsageBytes}
         />
       )}
 
