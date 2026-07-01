@@ -7,6 +7,7 @@ import {
   DEFAULT_APP_PREFERENCES,
   DistributionStrategy,
 } from '@/models/group-assignment';
+import { Language } from '@/i18n';
 import { createDefaultVehicles } from '@/services/group-assignment-service';
 import {
   addPublisherProfileToSessionState,
@@ -58,6 +59,22 @@ describe('group session service', () => {
 
     if (result.ok) {
       assert.deepEqual(result.vehicles, createDefaultVehicles(2, 6));
+    }
+  });
+
+  it('uses configured language when validating a new distribution', () => {
+    const result = validateNewDistribution(
+      6,
+      2,
+      5,
+      DistributionStrategy.MinimizeCars,
+      Language.Spanish,
+    );
+
+    assert.equal(result.ok, true);
+
+    if (result.ok) {
+      assert.equal(result.vehicles[0].label, 'Vehículo 1');
     }
   });
 
@@ -550,6 +567,27 @@ describe('group session service', () => {
       },
     );
 
+    assert.equal(nextState.activeSession?.rerunPromptVisible, false);
+  });
+
+  it('localizes default vehicle labels when language preference changes', () => {
+    const activeSession = createCompletedResultsState(10, createDefaultVehicles(2), false);
+    const nextState = updatePreferencesInSessionState(
+      {
+        activeSession,
+        preferences: DEFAULT_APP_PREFERENCES,
+        publisherProfiles: [],
+        resultsHistory: [],
+        savedResults: [],
+      },
+      {
+        ...DEFAULT_APP_PREFERENCES,
+        language: Language.Spanish,
+      },
+    );
+
+    assert.equal(nextState.activeSession?.vehicles[0].label, 'Vehículo 1');
+    assert.equal(nextState.activeSession?.distribution?.assignments[0].label, 'Vehículo 1');
     assert.equal(nextState.activeSession?.rerunPromptVisible, false);
   });
 

@@ -7,6 +7,7 @@ import {
   DEFAULT_APP_PREFERENCES,
   DistributionStrategy,
 } from '@/models/group-assignment';
+import { Language } from '@/i18n';
 import type { ResultsHistoryEntry } from '@/services/group-session-service';
 import {
   estimateStorageBytes,
@@ -92,6 +93,21 @@ describe('persistent storage service', () => {
         defaultVehicleCapacity: 7,
         distributionStrategy: DistributionStrategy.MaximizeComfort,
       },
+    );
+  });
+
+  it('hydrates Spanish language preferences and defaults malformed language to English', () => {
+    assert.equal(
+      mergePersistedPreferences({
+        language: Language.Spanish,
+      }).language,
+      Language.Spanish,
+    );
+    assert.equal(
+      mergePersistedPreferences({
+        language: 'fr',
+      }).language,
+      Language.English,
     );
   });
 

@@ -8,6 +8,7 @@ import {
   DistributionStrategy,
   type VehicleAssignment,
 } from '@/models/group-assignment';
+import { Language } from '@/i18n';
 import {
   createDefaultVehicles,
   createDistributionSuggestion,
@@ -20,6 +21,16 @@ describe('group assignment service', () => {
     assert.deepEqual(createDefaultVehicles(2), [
       { id: 'vehicle-1', label: 'Vehicle 1', capacity: DEFAULT_VEHICLE_CAPACITY },
       { id: 'vehicle-2', label: 'Vehicle 2', capacity: DEFAULT_VEHICLE_CAPACITY },
+    ]);
+  });
+
+  it('creates Spanish default labels when requested', () => {
+    assert.deepEqual(createPlaceholderPassengers(2, Language.Spanish), [
+      { id: 'publisher-1', displayName: 'Publicador 1' },
+      { id: 'publisher-2', displayName: 'Publicador 2' },
+    ]);
+    assert.deepEqual(createDefaultVehicles(1, DEFAULT_VEHICLE_CAPACITY, Language.Spanish), [
+      { id: 'vehicle-1', label: 'Vehículo 1', capacity: DEFAULT_VEHICLE_CAPACITY },
     ]);
   });
 
@@ -50,6 +61,19 @@ describe('group assignment service', () => {
           strategy: DistributionStrategy.MinimizeCars,
         }),
       /12 publishers need 12 seats, but 2 vehicles provide 10/,
+    );
+  });
+
+  it('localizes distribution capacity errors', () => {
+    assert.throws(
+      () =>
+        createDistributionSuggestion({
+          language: Language.Spanish,
+          passengers: createPlaceholderPassengers(12, Language.Spanish),
+          vehicles: createDefaultVehicles(2, DEFAULT_VEHICLE_CAPACITY, Language.Spanish),
+          strategy: DistributionStrategy.MinimizeCars,
+        }),
+      /12 publicadores necesitan 12 asientos, pero 2 vehículos ofrecen 10/,
     );
   });
 
