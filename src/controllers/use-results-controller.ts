@@ -56,6 +56,10 @@ export function useResultsController() {
     router.navigate('/options');
   };
 
+  const goToInfo = () => {
+    router.navigate('/info');
+  };
+
   const getPassengerDisplayName = (passengerId: string) => {
     if (!activeSession) {
       return passengerId.replace('publisher-', 'Publisher ');
@@ -77,6 +81,7 @@ export function useResultsController() {
     hasAssignedPublisherProfile,
     goHome,
     goToHistory,
+    goToInfo,
     goToPublishers,
     goToOptions,
     hasActiveSession,

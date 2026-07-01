@@ -17,6 +17,7 @@ type HistoryScreenProps = {
   ) => string;
   goHome: () => void;
   goToHistory: () => void;
+  goToInfo: () => void;
   goToOptions: () => void;
   goToPublishers: () => void;
   restoreResult: (resultId: string) => void;
@@ -29,6 +30,7 @@ export function HistoryScreen({
   getHistoryPassengerDisplayName,
   goHome,
   goToHistory,
+  goToInfo,
   goToOptions,
   goToPublishers,
   restoreResult,
@@ -51,6 +53,7 @@ export function HistoryScreen({
           onClose={() => setMenuOpen(false)}
           onSelectHistory={goToHistory}
           onSelectHome={goHome}
+          onSelectInfo={goToInfo}
           onSelectOptions={goToOptions}
           onSelectPublishers={goToPublishers}
         />

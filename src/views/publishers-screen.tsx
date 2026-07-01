@@ -13,6 +13,7 @@ type PublishersScreenProps = {
   deleteAllPublisherProfiles: () => void;
   goHome: () => void;
   goToHistory: () => void;
+  goToInfo: () => void;
   goToPublishers: () => void;
   goToOptions: () => void;
   publisherProfiles: PublisherProfile[];
@@ -24,6 +25,7 @@ export function PublishersScreen({
   deleteAllPublisherProfiles,
   goHome,
   goToHistory,
+  goToInfo,
   goToPublishers,
   goToOptions,
   publisherProfiles,
@@ -61,6 +63,7 @@ export function PublishersScreen({
           onClose={() => setMenuOpen(false)}
           onSelectHome={goHome}
           onSelectHistory={goToHistory}
+          onSelectInfo={goToInfo}
           onSelectPublishers={goToPublishers}
           onSelectOptions={goToOptions}
         />

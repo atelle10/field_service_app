@@ -34,6 +34,7 @@ type AppMenuDrawerProps = {
   onClose: () => void;
   onSelectHome: () => void;
   onSelectHistory: () => void;
+  onSelectInfo: () => void;
   onSelectPublishers: () => void;
   onSelectOptions: () => void;
 };
@@ -42,6 +43,7 @@ export function AppMenuDrawer({
   onClose,
   onSelectHome,
   onSelectHistory,
+  onSelectInfo,
   onSelectPublishers,
   onSelectOptions,
 }: AppMenuDrawerProps) {
@@ -117,6 +119,8 @@ export function AppMenuDrawer({
                 ? onSelectHistory
               : label === 'Options'
                 ? onSelectOptions
+              : label === 'Info'
+                ? onSelectInfo
                 : undefined;
 
           return (

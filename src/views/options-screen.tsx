@@ -18,6 +18,7 @@ type OptionsScreenProps = {
   clearPersistentCache: () => Promise<void>;
   goHome: () => void;
   goToHistory: () => void;
+  goToInfo: () => void;
   goToOptions: () => void;
   goToPublishers: () => void;
   preferences: AppPreferences;
@@ -32,6 +33,7 @@ export function OptionsScreen({
   clearPersistentCache,
   goHome,
   goToHistory,
+  goToInfo,
   goToOptions,
   goToPublishers,
   preferences,
@@ -56,6 +58,7 @@ export function OptionsScreen({
           onClose={() => setMenuOpen(false)}
           onSelectHome={goHome}
           onSelectHistory={goToHistory}
+          onSelectInfo={goToInfo}
           onSelectOptions={goToOptions}
           onSelectPublishers={goToPublishers}
         />

@@ -33,6 +33,10 @@ export function useOptionsController() {
     router.navigate('/options');
   };
 
+  const goToInfo = () => {
+    router.navigate('/info');
+  };
+
   const updatePreference = <Key extends keyof AppPreferences>(
     key: Key,
     value: AppPreferences[Key],
@@ -47,6 +51,7 @@ export function useOptionsController() {
     clearPersistentCache,
     goHome,
     goToHistory,
+    goToInfo,
     goToOptions,
     goToPublishers,
     preferences,

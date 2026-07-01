@@ -34,11 +34,16 @@ export function usePublishersController() {
     router.navigate('/options');
   };
 
+  const goToInfo = () => {
+    router.navigate('/info');
+  };
+
   return {
     addPublisherProfile,
     deleteAllPublisherProfiles,
     goHome,
     goToHistory,
+    goToInfo,
     goToPublishers,
     goToOptions,
     publisherProfiles: getSortedPublishers(

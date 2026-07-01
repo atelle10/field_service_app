@@ -36,6 +36,10 @@ export function useHistoryController() {
     router.navigate('/options');
   };
 
+  const goToInfo = () => {
+    router.navigate('/info');
+  };
+
   const restoreResult = (resultId: string) => {
     restoreSavedResult(resultId);
     router.navigate('/results');
@@ -54,6 +58,7 @@ export function useHistoryController() {
     getHistoryPassengerDisplayName,
     goHome,
     goToHistory,
+    goToInfo,
     goToOptions,
     goToPublishers,
     restoreResult,
