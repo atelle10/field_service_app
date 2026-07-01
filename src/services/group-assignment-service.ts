@@ -10,6 +10,13 @@ import {
   type VehicleAssignment,
   type VehicleInput,
 } from '@/models/group-assignment';
+import {
+  formatDefaultPublisherLabel,
+  formatDefaultVehicleLabel,
+  Language,
+  type LanguageCode,
+  translate,
+} from '@/i18n';
 
 type RankedVehicle = VehicleInput & {
   inputOrder: number;
@@ -20,20 +27,24 @@ type MutableAssignment = VehicleAssignment & {
   selected: boolean;
 };
 
-export function createPlaceholderPassengers(publisherCount: number): Passenger[] {
+export function createPlaceholderPassengers(
+  publisherCount: number,
+  language: LanguageCode = Language.English,
+): Passenger[] {
   return Array.from({ length: publisherCount }, (_, index) => ({
     id: `publisher-${index + 1}`,
-    displayName: `Publisher ${index + 1}`,
+    displayName: formatDefaultPublisherLabel(language, index + 1),
   }));
 }
 
 export function createDefaultVehicles(
   vehicleCount: number,
   capacity = DEFAULT_VEHICLE_CAPACITY,
+  language: LanguageCode = Language.English,
 ): VehicleInput[] {
   return Array.from({ length: vehicleCount }, (_, index) => ({
     id: `vehicle-${index + 1}`,
-    label: `Vehicle ${index + 1}`,
+    label: formatDefaultVehicleLabel(language, index + 1),
     capacity,
   }));
 }
@@ -83,6 +94,7 @@ export async function requestRerunCheck(
 
 function distributePassengers(request: DistributionRequest): DistributionResponse {
   validateDistributionRequest(request);
+  const language = request.language ?? Language.English;
 
   const rankedVehicles = request.vehicles.map((vehicle, inputOrder) => ({
     ...vehicle,
@@ -92,7 +104,12 @@ function distributePassengers(request: DistributionRequest): DistributionRespons
 
   if (request.passengers.length > totalCapacity) {
     throw new Error(
-      `${request.passengers.length} publishers need ${request.passengers.length} seats, but ${request.vehicles.length} vehicles provide ${totalCapacity}.`,
+      translate(language, 'capacityShortage', {
+        publishers: request.passengers.length,
+        seatsNeeded: request.passengers.length,
+        vehicles: request.vehicles.length,
+        seatsAvailable: totalCapacity,
+      }),
     );
   }
 
@@ -103,7 +120,7 @@ function distributePassengers(request: DistributionRequest): DistributionRespons
     const target = chooseAssignment(assignments, request.strategy);
 
     if (!target) {
-      throw new Error('No available vehicle seats remain.');
+      throw new Error(translate(language, 'noAvailableVehicleSeats'));
     }
 
     target.passengerIds.push(passenger.id);
@@ -133,17 +150,21 @@ function distributePassengers(request: DistributionRequest): DistributionRespons
 }
 
 function validateDistributionRequest(request: DistributionRequest) {
+  const language = request.language ?? Language.English;
+
   if (!Number.isInteger(request.passengers.length) || request.passengers.length < 1) {
-    throw new Error('At least one publisher is required.');
+    throw new Error(translate(language, 'publisherRequired'));
   }
 
   if (request.vehicles.length < 1) {
-    throw new Error('At least one vehicle is required.');
+    throw new Error(translate(language, 'vehicleRequired'));
   }
 
   for (const vehicle of request.vehicles) {
     if (!Number.isInteger(vehicle.capacity) || vehicle.capacity < 0) {
-      throw new Error(`${vehicle.label} must have a valid seat capacity.`);
+      throw new Error(
+        translate(language, 'vehicleCapacityInvalid', { label: vehicle.label }),
+      );
     }
   }
 }

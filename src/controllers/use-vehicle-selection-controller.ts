@@ -3,11 +3,12 @@ import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { useGroupSession } from '@/context/group-session-context';
+import { translate } from '@/i18n';
 import { vehicleCountOptions } from '@/models/group-assignment';
 
 export function useVehicleSelectionController() {
   const { publishers } = useLocalSearchParams<{ publishers?: string }>();
-  const { beginNewDistribution } = useGroupSession();
+  const { beginNewDistribution, preferences } = useGroupSession();
   const [vehicleCount, setVehicleCount] = useState(1);
 
   const publisherCount = useMemo(() => {
@@ -22,7 +23,7 @@ export function useVehicleSelectionController() {
 
     if (!result.ok) {
       Alert.alert(
-        'Not enough seats',
+        translate(preferences.language, 'notEnoughSeats'),
         result.errorMessage,
       );
       return;
@@ -34,6 +35,7 @@ export function useVehicleSelectionController() {
   return {
     vehicleCount,
     vehicleCountOptions,
+    language: preferences.language,
     setVehicleCount,
     confirmVehicleCount,
   };

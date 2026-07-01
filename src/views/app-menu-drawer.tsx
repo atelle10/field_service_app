@@ -20,13 +20,15 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useGroupSession } from '@/context/group-session-context';
+import { translate } from '@/i18n';
 import { colors, radii } from '@/styles/theme';
 
 const menuOptions = [
-  { Icon: UsersRound, label: 'Publishers' },
-  { Icon: History, label: 'History' },
-  { Icon: SlidersHorizontal, label: 'Options' },
-  { Icon: Info, label: 'Info' },
+  { Icon: UsersRound, key: 'publishers' },
+  { Icon: History, key: 'history' },
+  { Icon: SlidersHorizontal, key: 'options' },
+  { Icon: Info, key: 'info' },
 ] as const;
 const headerHeight = 44;
 const headerTopPadding = 28;
@@ -73,6 +75,7 @@ export function AppMenuDrawer({
   onSelectPublishers,
   onSelectOptions,
 }: AppMenuDrawerProps) {
+  const { preferences } = useGroupSession();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [translateProgress] = useState(() => new Animated.Value(-1));
@@ -125,10 +128,10 @@ export function AppMenuDrawer({
         },
       ]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Menu</Text>
+        <Text style={styles.title}>{translate(preferences.language, 'menu')}</Text>
 
         <Pressable
-          accessibilityLabel="Close menu"
+          accessibilityLabel={translate(preferences.language, 'closeMenu')}
           accessibilityRole="button"
           onPress={() => closeDrawer()}
           style={({ pressed }) => [styles.closeButton, pressed && styles.buttonPressed]}>
@@ -142,29 +145,31 @@ export function AppMenuDrawer({
           onPress={() => closeDrawer(onSelectHome)}
           style={({ pressed }) => [styles.option, pressed && styles.buttonPressed]}>
           <House color={colors.text} size={16} strokeWidth={2.2} />
-          <Text style={styles.optionText}>Home</Text>
+          <Text style={styles.optionText}>{translate(preferences.language, 'home')}</Text>
         </Pressable>
 
-        {menuOptions.map(({ Icon, label }) => {
+        {menuOptions.map(({ Icon, key }) => {
           const onSelect =
-            label === 'Publishers'
+            key === 'publishers'
               ? onSelectPublishers
-              : label === 'History'
+              : key === 'history'
                 ? onSelectHistory
-              : label === 'Options'
+              : key === 'options'
                 ? onSelectOptions
-              : label === 'Info'
+              : key === 'info'
                 ? onSelectInfo
                 : undefined;
 
           return (
             <Pressable
               accessibilityRole="button"
-              key={label}
+              key={key}
               onPress={() => closeDrawer(onSelect)}
               style={({ pressed }) => [styles.option, pressed && styles.buttonPressed]}>
               <Icon color={colors.text} size={16} strokeWidth={2.2} />
-              <Text style={styles.optionText}>{label}</Text>
+              <Text style={styles.optionText}>
+                {translate(preferences.language, key)}
+              </Text>
             </Pressable>
           );
         })}

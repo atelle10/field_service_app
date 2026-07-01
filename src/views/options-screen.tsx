@@ -8,6 +8,7 @@ import {
   DistributionStrategy,
   type AppPreferences,
 } from '@/models/group-assignment';
+import { Language, translate } from '@/i18n';
 import { colors } from '@/styles/theme';
 import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/options-screen.styles';
@@ -42,6 +43,8 @@ export function OptionsScreen({
 }: OptionsScreenProps) {
   const [expandedInfo, setExpandedInfo] = useState<InfoKey>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) =>
+    translate(preferences.language, key, params);
 
   const toggleInfo = (key: Exclude<InfoKey, null>) => {
     setExpandedInfo((currentValue) => (currentValue === key ? null : key));
@@ -71,7 +74,7 @@ export function OptionsScreen({
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Pressable
-              accessibilityLabel={menuOpen ? 'Close menu' : 'Open menu'}
+              accessibilityLabel={menuOpen ? t('closeMenu') : t('openMenu')}
               accessibilityRole="button"
               onPress={() => setMenuOpen((currentValue) => !currentValue)}
               style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}>
@@ -79,15 +82,15 @@ export function OptionsScreen({
             </Pressable>
 
             <View style={styles.titlePanel}>
-              <Text style={styles.title}>Options</Text>
+              <Text style={styles.title}>{t('options')}</Text>
             </View>
           </View>
 
           <View style={styles.section}>
             <View style={styles.optionHeader}>
-              <Text style={styles.optionTitle}>Default Seat Capacity</Text>
+              <Text style={styles.optionTitle}>{t('defaultSeatCapacity')}</Text>
               <Pressable
-                accessibilityLabel="Default seat capacity details"
+                accessibilityLabel={t('capacityDetails')}
                 accessibilityRole="button"
                 onPress={() => toggleInfo('capacity')}
                 style={({ pressed }) => [
@@ -100,14 +103,15 @@ export function OptionsScreen({
 
             {expandedInfo === 'capacity' && (
               <Text style={styles.infoText}>
-                Default is {DEFAULT_APP_PREFERENCES.defaultVehicleCapacity}. Applies to
-                newly created vehicles.
+                {t('capacityInfo', {
+                  capacity: DEFAULT_APP_PREFERENCES.defaultVehicleCapacity,
+                })}
               </Text>
             )}
 
             <View style={styles.capacityControl}>
               <Pressable
-                accessibilityLabel="Decrease default seat capacity"
+                accessibilityLabel={t('decreaseDefaultSeatCapacity')}
                 accessibilityRole="button"
                 onPress={() => updateDefaultCapacity(preferences.defaultVehicleCapacity - 1)}
                 style={({ pressed }) => [
@@ -120,7 +124,7 @@ export function OptionsScreen({
                 {preferences.defaultVehicleCapacity}
               </Text>
               <Pressable
-                accessibilityLabel="Increase default seat capacity"
+                accessibilityLabel={t('increaseDefaultSeatCapacity')}
                 accessibilityRole="button"
                 onPress={() => updateDefaultCapacity(preferences.defaultVehicleCapacity + 1)}
                 style={({ pressed }) => [
@@ -134,9 +138,9 @@ export function OptionsScreen({
 
           <View style={styles.section}>
             <View style={styles.optionHeader}>
-              <Text style={styles.optionTitle}>Distribution Algorithm</Text>
+              <Text style={styles.optionTitle}>{t('distributionAlgorithm')}</Text>
               <Pressable
-                accessibilityLabel="Distribution algorithm details"
+                accessibilityLabel={t('algorithmDetails')}
                 accessibilityRole="button"
                 onPress={() => toggleInfo('strategy')}
                 style={({ pressed }) => [
@@ -150,11 +154,10 @@ export function OptionsScreen({
             {expandedInfo === 'strategy' && (
               <View style={styles.infoBlock}>
                 <Text style={styles.infoText}>
-                  Minimize Vehicles uses the fewest vehicles possible.
+                  {t('minimizeVehiclesInfo')}
                 </Text>
                 <Text style={styles.infoText}>
-                  Maximize Comfort spreads publishers across available vehicles more
-                  evenly.
+                  {t('maximizeComfortInfo')}
                 </Text>
               </View>
             )}
@@ -164,7 +167,7 @@ export function OptionsScreen({
                 active={
                   preferences.distributionStrategy === DistributionStrategy.MinimizeCars
                 }
-                label="Minimize Vehicles"
+                label={t('minimizeVehicles')}
                 onPress={() =>
                   updatePreference(
                     'distributionStrategy',
@@ -176,7 +179,7 @@ export function OptionsScreen({
                 active={
                   preferences.distributionStrategy === DistributionStrategy.MaximizeComfort
                 }
-                label="Maximize Comfort"
+                label={t('maximizeComfort')}
                 onPress={() =>
                   updatePreference(
                     'distributionStrategy',
@@ -187,35 +190,52 @@ export function OptionsScreen({
             </View>
 
             <Text style={styles.applyNote}>
-              Strategy changes mark current results for recalculation.
+              {t('strategyApplyNote')}
             </Text>
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.optionTitle}>{t('language')}</Text>
+            <View style={styles.segmentedControl}>
+              <StrategyButton
+                active={preferences.language === Language.English}
+                label="English"
+                onPress={() => updatePreference('language', Language.English)}
+              />
+              <StrategyButton
+                active={preferences.language === Language.Spanish}
+                label="Español"
+                onPress={() => updatePreference('language', Language.Spanish)}
+              />
+            </View>
+            <Text style={styles.applyNote}>{t('languageMeta')}</Text>
+          </View>
+
+          <View style={styles.section}>
             <PreferenceToggle
-              label="Auto-save Results"
+              label={t('autoSaveResults')}
               onValueChange={(value) => updatePreference('autoSaveResults', value)}
               value={preferences.autoSaveResults}
             />
             <PreferenceToggle
-              label="Show Unused Vehicles"
+              label={t('showUnusedVehicles')}
               onValueChange={(value) => updatePreference('showUnusedVehicles', value)}
               value={preferences.showUnusedVehicles}
             />
             <PreferenceToggle
-              label="Summary Starts Expanded"
+              label={t('summaryStartsExpanded')}
               onValueChange={(value) => updatePreference('summaryStartsExpanded', value)}
               value={preferences.summaryStartsExpanded}
             />
             <PreferenceToggle
-              label="Sort Publishers Alphabetically"
+              label={t('sortPublishersAlphabetically')}
               onValueChange={(value) =>
                 updatePreference('sortPublishersAlphabetically', value)
               }
               value={preferences.sortPublishersAlphabetically}
             />
             <PreferenceToggle
-              label="Confirm Delete Actions"
+              label={t('confirmDeleteActions')}
               onValueChange={(value) =>
                 updatePreference('confirmDestructiveActions', value)
               }
@@ -226,26 +246,26 @@ export function OptionsScreen({
           <View style={styles.section}>
             <View style={styles.storageHeader}>
               <View style={styles.storageTextPanel}>
-                <Text style={styles.optionTitle}>Stored Data</Text>
+                <Text style={styles.optionTitle}>{t('storedData')}</Text>
                 <Text style={styles.storageUsageText}>
                   {formatStorageUsage(storageUsageBytes)}
                 </Text>
               </View>
 
               <Pressable
-                accessibilityLabel="Clear cached app data"
+                accessibilityLabel={t('clearCachedData')}
                 accessibilityRole="button"
                 onPress={clearPersistentCache}
                 style={({ pressed }) => [
                   styles.clearCacheButton,
                   pressed && styles.buttonPressed,
                 ]}>
-                <Text style={styles.clearCacheButtonText}>Clear Cache</Text>
+                <Text style={styles.clearCacheButtonText}>{t('clearCache')}</Text>
               </Pressable>
             </View>
 
             <Text style={styles.applyNote}>
-              Removes saved publishers, saved results, and preferences from this device.
+              {t('clearCachedDataMessage')}
             </Text>
           </View>
         </ScrollView>

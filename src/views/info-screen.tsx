@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/styles/theme';
+import { type LanguageCode, translate } from '@/i18n';
 import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/info-screen.styles';
 
@@ -27,6 +28,7 @@ type InfoScreenProps = {
   goToPublishers: () => void;
   openRepository: () => void;
   repositoryUrl: string;
+  language: LanguageCode;
 };
 
 export function InfoScreen({
@@ -38,9 +40,12 @@ export function InfoScreen({
   goToPublishers,
   openRepository,
   repositoryUrl,
+  language,
 }: InfoScreenProps) {
   const [creditsExpanded, setCreditsExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) =>
+    translate(language, key, params);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -62,7 +67,7 @@ export function InfoScreen({
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Pressable
-              accessibilityLabel={menuOpen ? 'Close menu' : 'Open menu'}
+              accessibilityLabel={menuOpen ? t('closeMenu') : t('openMenu')}
               accessibilityRole="button"
               onPress={() => setMenuOpen((currentValue) => !currentValue)}
               style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}>
@@ -70,25 +75,23 @@ export function InfoScreen({
             </Pressable>
 
             <View style={styles.titlePanel}>
-              <Text style={styles.title}>Info</Text>
+              <Text style={styles.title}>{t('info')}</Text>
             </View>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.appName}>Field Service Assistant</Text>
-            <Text style={styles.metaText}>Version {appVersion}</Text>
+            <Text style={styles.metaText}>{t('version', { version: appVersion })}</Text>
             <Text style={styles.metaText}>© 2026 Andrew Tellez</Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={styles.sectionTitle}>{t('about')}</Text>
             <Text style={styles.bodyText}>
-              Field Service Assistant helps organize field service groups by assigning
-              publishers to vehicles and overseers, then allowing the distribution to be
-              reviewed, adjusted, saved, and restored later.
+              {t('appDescription')}
             </Text>
             <Text style={styles.bodyText}>
-              This app is open-source. The project source is available on GitHub.
+              {t('appOpenSource')}
             </Text>
 
             <Pressable
@@ -98,7 +101,7 @@ export function InfoScreen({
                 styles.repositoryButton,
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.repositoryButtonText}>Github Repo</Text>
+              <Text style={styles.repositoryButtonText}>{t('githubRepo')}</Text>
               <ExternalLink color={colors.background} size={16} strokeWidth={2.5} />
             </Pressable>
           </View>
@@ -111,15 +114,14 @@ export function InfoScreen({
                 styles.dropdownHeader,
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.sectionTitle}>Open Source Credits</Text>
+              <Text style={styles.sectionTitle}>{t('openSourceCredits')}</Text>
               <Text style={styles.dropdownIcon}>{creditsExpanded ? '-' : '+'}</Text>
             </Pressable>
 
             {creditsExpanded && (
               <>
                 <Text style={styles.bodyText}>
-                  Field Service Assistant uses open-source libraries and frameworks,
-                  including:
+                  {t('openSourceIntro')}
                 </Text>
 
                 <View style={styles.creditList}>

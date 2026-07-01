@@ -40,6 +40,7 @@ export function usePublishersController() {
     goToInfo,
     goToPublishers,
     goToOptions,
+    language: preferences.language,
     publisherProfiles: getSortedPublishers(
       publisherProfiles,
       preferences.sortPublishersAlphabetically,

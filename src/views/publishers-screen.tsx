@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { PublisherProfile } from '@/models/group-assignment';
+import { type LanguageCode, translate } from '@/i18n';
 import { colors } from '@/styles/theme';
 import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/publishers-screen.styles';
@@ -18,6 +19,7 @@ type PublishersScreenProps = {
   goToOptions: () => void;
   publisherProfiles: PublisherProfile[];
   removePublisherProfile: (publisherId: string) => void;
+  language: LanguageCode;
 };
 
 export function PublishersScreen({
@@ -30,7 +32,10 @@ export function PublishersScreen({
   goToOptions,
   publisherProfiles,
   removePublisherProfile,
+  language,
 }: PublishersScreenProps) {
+  const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) =>
+    translate(language, key, params);
   const [menuOpen, setMenuOpen] = useState(false);
   const [newPublisherName, setNewPublisherName] = useState('');
   const [publisherModalVisible, setPublisherModalVisible] = useState(false);
@@ -76,6 +81,7 @@ export function PublishersScreen({
         onCancel={closeAddPublisherModal}
         onChangeName={setNewPublisherName}
         onConfirm={saveNewPublisher}
+        t={t}
         visible={publisherModalVisible}
       />
 
@@ -85,7 +91,7 @@ export function PublishersScreen({
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Pressable
-              accessibilityLabel={menuOpen ? 'Close menu' : 'Open menu'}
+              accessibilityLabel={menuOpen ? t('closeMenu') : t('openMenu')}
               accessibilityRole="button"
               onPress={() => setMenuOpen((currentValue) => !currentValue)}
               style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}>
@@ -93,7 +99,7 @@ export function PublishersScreen({
             </Pressable>
 
             <View style={styles.titlePanel}>
-              <Text style={styles.title}>Publishers</Text>
+              <Text style={styles.title}>{t('publishers')}</Text>
             </View>
           </View>
 
@@ -105,7 +111,7 @@ export function PublishersScreen({
                     {publisher.name}
                   </Text>
                   <Pressable
-                    accessibilityLabel={`Remove ${publisher.name}`}
+                    accessibilityLabel={t('removePublisher', { name: publisher.name })}
                     accessibilityRole="button"
                     onPress={() => removePublisherProfile(publisher.id)}
                     style={({ pressed }) => [
@@ -119,9 +125,9 @@ export function PublishersScreen({
             </View>
           ) : (
             <View style={styles.emptyPanel}>
-              <Text style={styles.emptyTitle}>No saved publishers</Text>
+              <Text style={styles.emptyTitle}>{t('noSavedPublishers')}</Text>
               <Text style={styles.emptyText}>
-                Publisher names saved from seat labels will appear here.
+                {t('noSavedPublishersText')}
               </Text>
             </View>
           )}
@@ -135,7 +141,7 @@ export function PublishersScreen({
                 styles.addButton,
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.addButtonText}>Add New</Text>
+              <Text style={styles.addButtonText}>{t('addNew')}</Text>
             </Pressable>
 
             <Pressable
@@ -152,7 +158,7 @@ export function PublishersScreen({
                   styles.deleteAllButtonText,
                   !hasPublishers && styles.disabledButtonText,
                 ]}>
-                Delete All
+                {t('deleteAll')}
               </Text>
             </Pressable>
           </View>
@@ -168,6 +174,7 @@ function AddPublisherModal({
   onCancel,
   onChangeName,
   onConfirm,
+  t,
   visible,
 }: {
   canConfirm: boolean;
@@ -175,6 +182,7 @@ function AddPublisherModal({
   onCancel: () => void;
   onChangeName: (name: string) => void;
   onConfirm: () => void;
+  t: (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => string;
   visible: boolean;
 }) {
   return (
@@ -185,15 +193,15 @@ function AddPublisherModal({
       visible={visible}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>Add Publisher</Text>
+          <Text style={styles.modalTitle}>{t('addPublisher')}</Text>
 
           <TextInput
-            accessibilityLabel="Publisher name"
+            accessibilityLabel={t('publisherName')}
             autoCapitalize="words"
             autoFocus
             onChangeText={onChangeName}
             onSubmitEditing={onConfirm}
-            placeholder="Enter publisher name"
+            placeholder={t('enterPublisherName')}
             placeholderTextColor={colors.textSubtle}
             returnKeyType="done"
             style={styles.nameInput}
@@ -209,7 +217,7 @@ function AddPublisherModal({
                 styles.secondaryButton,
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.secondaryButtonText}>Cancel</Text>
+              <Text style={styles.secondaryButtonText}>{t('cancel')}</Text>
             </Pressable>
 
             <Pressable
@@ -226,7 +234,7 @@ function AddPublisherModal({
                   styles.primaryButtonText,
                   !canConfirm && styles.disabledButtonText,
                 ]}>
-                Confirm
+                {t('confirm')}
               </Text>
             </Pressable>
           </View>

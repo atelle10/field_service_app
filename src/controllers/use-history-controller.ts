@@ -10,6 +10,7 @@ export function useHistoryController() {
   const {
     deleteAllSavedResults,
     deleteSavedResult,
+    preferences,
     restoreSavedResult,
     savedResults,
   } = useGroupSession();
@@ -43,7 +44,11 @@ export function useHistoryController() {
     entry: ResultsHistoryEntry,
     passengerId: string,
   ) => {
-    return getHistoryPassengerDisplayNameFromEntry(entry, passengerId);
+    return getHistoryPassengerDisplayNameFromEntry(
+      entry,
+      passengerId,
+      preferences.language,
+    );
   };
 
   return {
@@ -55,6 +60,7 @@ export function useHistoryController() {
     goToInfo,
     goToOptions,
     goToPublishers,
+    language: preferences.language,
     restoreResult,
     savedResults: getSortedSavedResults(savedResults),
   };

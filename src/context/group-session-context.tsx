@@ -23,6 +23,7 @@ import {
   savePublisherProfiles,
   saveResultHistoryEntries,
   saveResultHistoryEntry,
+  saveLanguageSelected,
   saveStartScreenSeen,
 } from '@/services/persistent-storage-service';
 import {
@@ -51,6 +52,7 @@ import {
   updateVehicleLabelInResultsState,
   validateNewDistribution,
 } from '@/services/group-session-service';
+import { type LanguageCode, translate } from '@/i18n';
 
 const MIN_CALCULATION_LOADING_MS = 2000;
 
@@ -81,6 +83,7 @@ type GroupSessionContextValue = {
   ) => BeginDistributionResult;
   clearPersistentCache: () => Promise<void>;
   completeStartScreen: () => void;
+  completeLanguageSelection: (language: LanguageCode) => Promise<void>;
   confirmDestructiveAction: () => void;
   deleteAllPublisherProfiles: () => void;
   disableServiceView: () => void;
@@ -90,6 +93,7 @@ type GroupSessionContextValue = {
   enableServiceView: () => Promise<void>;
   hasHydratedPersistedData: boolean;
   hasActiveSession: boolean;
+  hasSelectedLanguage: boolean;
   hasSeenStartScreen: boolean;
   preferences: AppPreferences;
   publisherProfiles: ActiveResultsState['publisherProfiles'];
@@ -124,6 +128,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     createEmptyGroupSessionState(),
   );
   const [hasHydratedPersistedData, setHasHydratedPersistedData] = useState(false);
+  const [hasSelectedLanguage, setHasSelectedLanguage] = useState(false);
   const [hasSeenStartScreen, setHasSeenStartScreen] = useState(false);
   const [storageUsageBytes, setStorageUsageBytes] = useState(0);
   const [storageActionFeedback, setStorageActionFeedback] =
@@ -170,6 +175,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     try {
       const nextStorageUsageBytes = await clearPersistentStorage();
       setStorageUsageBytes(nextStorageUsageBytes);
+      setHasSelectedLanguage(false);
       setHasSeenStartScreen(false);
       setState((currentState) => ({
         ...currentState,
@@ -185,31 +191,32 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         savedResults: [],
       }));
       setStorageActionFeedback({
-        message:
-          'Stored publishers, saved results, and preferences were removed from this device.',
-        title: 'Cache cleared',
+        message: translate(
+          state.preferences.language,
+          'cacheClearedMessage',
+        ),
+        title: translate(state.preferences.language, 'cacheCleared'),
         tone: 'success',
       });
     } catch (error) {
       setStorageActionFeedback({
-        message: getStorageActionErrorMessage(error),
-        title: 'Cache could not be cleared',
+        message: getStorageActionErrorMessage(error, state.preferences.language),
+        title: translate(state.preferences.language, 'cacheClearFailed'),
         tone: 'error',
       });
     }
-  }, []);
+  }, [state.preferences.language]);
 
   const clearPersistentCache = useCallback(async () => {
     runDestructiveAction(
       {
-        confirmLabel: 'Clear Cache',
-        message:
-          'This removes stored publishers, saved results, and preferences from this device.',
-        title: 'Clear cached data?',
+        confirmLabel: translate(state.preferences.language, 'clearCache'),
+        message: translate(state.preferences.language, 'clearCachedDataMessage'),
+        title: translate(state.preferences.language, 'clearCachedDataQuestion'),
       },
       clearPersistentCacheImmediately,
     );
-  }, [clearPersistentCacheImmediately, runDestructiveAction]);
+  }, [clearPersistentCacheImmediately, runDestructiveAction, state.preferences.language]);
 
   const dismissDestructiveActionConfirmation = useCallback(() => {
     confirmationActionRef.current = null;
@@ -295,8 +302,12 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
               })
               .catch((error) => {
                 setStorageActionFeedback({
-                  message: getStorageActionErrorMessage(error),
-                  title: 'Auto-save failed',
+                  message: getStorageActionErrorMessage(
+                    error,
+                    currentState.preferences.language,
+                  ),
+                  title:
+                    translate(currentState.preferences.language, 'autoSaveFailed'),
                   tone: 'error',
                 });
               });
@@ -335,6 +346,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           strategy,
           publisherProfiles,
           passengerPublisherIds,
+          currentState.preferences.language,
         ),
       }));
       scheduleCalculationResult(
@@ -388,6 +400,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           preferences: persistedData.preferences,
           savedResults: persistedData.savedResults,
         }));
+        setHasSelectedLanguage(persistedData.hasSelectedLanguage);
         setHasSeenStartScreen(persistedData.hasSeenStartScreen);
         setStorageUsageBytes(persistedData.storageUsageBytes);
         setHasHydratedPersistedData(true);
@@ -415,6 +428,25 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       });
   };
 
+  const completeLanguageSelection = async (language: LanguageCode) => {
+    const preferences = {
+      ...state.preferences,
+      language,
+    };
+
+    setState((currentState) => updatePreferencesInSessionState(currentState, preferences));
+    setHasSelectedLanguage(true);
+
+    try {
+      const nextStorageUsageBytes = await saveAppPreferences(preferences);
+      setStorageUsageBytes(nextStorageUsageBytes);
+      const languageSelectedStorageUsageBytes = await saveLanguageSelected();
+      setStorageUsageBytes(languageSelectedStorageUsageBytes);
+    } catch {
+      setStorageUsageBytes(0);
+    }
+  };
+
   const beginNewDistribution = (
     publisherCount: number,
     vehicleCount: number,
@@ -424,6 +456,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       vehicleCount,
       state.preferences.defaultVehicleCapacity,
       state.preferences.distributionStrategy,
+      state.preferences.language,
     );
 
     if (!validationResult.ok) {
@@ -457,7 +490,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
           ...currentState.activeSession,
           errorMessage: '',
           publisherCount,
-        }),
+        }, currentState.preferences.language),
       };
     });
   };
@@ -477,8 +510,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
             currentState.activeSession.vehicles,
             vehicleCount,
             currentState.preferences.defaultVehicleCapacity,
+            currentState.preferences.language,
           ),
-        }),
+        }, currentState.preferences.language),
       };
     });
   };
@@ -499,7 +533,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
               ? { ...vehicle, capacity: Math.max(0, capacity) }
               : vehicle,
           ),
-        }),
+        }, currentState.preferences.language),
       };
     });
   };
@@ -614,9 +648,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const removePublisherProfile = (publisherId: string) => {
     runDestructiveAction(
       {
-        confirmLabel: 'Remove',
-        message: 'This removes the saved publisher name from this device.',
-        title: 'Remove publisher?',
+        confirmLabel: translate(state.preferences.language, 'remove'),
+        message: translate(state.preferences.language, 'removePublisherMessage'),
+        title: translate(state.preferences.language, 'removePublisherQuestion'),
       },
       () => removePublisherProfileImmediately(publisherId),
     );
@@ -637,9 +671,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const deleteAllPublisherProfiles = () => {
     runDestructiveAction(
       {
-        confirmLabel: 'Delete All',
-        message: 'This removes all saved publisher names from this device.',
-        title: 'Delete all publishers?',
+        confirmLabel: translate(state.preferences.language, 'deleteAll'),
+        message: translate(state.preferences.language, 'deleteAllPublishersMessage'),
+        title: translate(state.preferences.language, 'deleteAllPublishersQuestion'),
       },
       deleteAllPublisherProfilesImmediately,
     );
@@ -667,14 +701,14 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         savedResults: [...currentState.savedResults, entry],
       }));
       setStorageActionFeedback({
-        message: 'This distribution result was saved on this device.',
-        title: 'Result saved',
+        message: translate(state.preferences.language, 'resultSavedMessage'),
+        title: translate(state.preferences.language, 'resultSaved'),
         tone: 'success',
       });
     } catch (error) {
       setStorageActionFeedback({
-        message: getStorageActionErrorMessage(error),
-        title: 'Result could not be saved',
+        message: getStorageActionErrorMessage(error, state.preferences.language),
+        title: translate(state.preferences.language, 'resultSaveFailed'),
         tone: 'error',
       });
     }
@@ -710,8 +744,8 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       setStorageActionFeedback({
-        message: getStorageActionErrorMessage(error),
-        title: 'Service View could not start',
+        message: getStorageActionErrorMessage(error, state.preferences.language),
+        title: translate(state.preferences.language, 'serviceViewStartFailed'),
         tone: 'error',
       });
     }
@@ -766,14 +800,14 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       const nextStorageUsageBytes = await saveResultHistoryEntries(nextSavedResults);
       setStorageUsageBytes(nextStorageUsageBytes);
       setStorageActionFeedback({
-        message: 'The saved result was removed from this device.',
-        title: 'Result deleted',
+        message: translate(state.preferences.language, 'resultDeletedMessage'),
+        title: translate(state.preferences.language, 'resultDeleted'),
         tone: 'success',
       });
     } catch (error) {
       setStorageActionFeedback({
-        message: getStorageActionErrorMessage(error),
-        title: 'Result could not be deleted',
+        message: getStorageActionErrorMessage(error, state.preferences.language),
+        title: translate(state.preferences.language, 'resultDeleteFailed'),
         tone: 'error',
       });
     }
@@ -782,9 +816,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const deleteSavedResult = (resultId: string) => {
     runDestructiveAction(
       {
-        confirmLabel: 'Delete',
-        message: 'This removes the saved result from this device.',
-        title: 'Delete saved result?',
+        confirmLabel: translate(state.preferences.language, 'delete'),
+        message: translate(state.preferences.language, 'deleteSavedResultMessage'),
+        title: translate(state.preferences.language, 'deleteSavedResultQuestion'),
       },
       () => deleteSavedResultImmediately(resultId),
     );
@@ -807,14 +841,14 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       const nextStorageUsageBytes = await saveResultHistoryEntries(nextSavedResults);
       setStorageUsageBytes(nextStorageUsageBytes);
       setStorageActionFeedback({
-        message: 'All saved results were removed from this device.',
-        title: 'History cleared',
+        message: translate(state.preferences.language, 'historyClearedMessage'),
+        title: translate(state.preferences.language, 'historyCleared'),
         tone: 'success',
       });
     } catch (error) {
       setStorageActionFeedback({
-        message: getStorageActionErrorMessage(error),
-        title: 'History could not be cleared',
+        message: getStorageActionErrorMessage(error, state.preferences.language),
+        title: translate(state.preferences.language, 'historyClearFailed'),
         tone: 'error',
       });
     }
@@ -823,9 +857,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const deleteAllSavedResults = () => {
     runDestructiveAction(
       {
-        confirmLabel: 'Clear All',
-        message: 'This removes all saved results from this device.',
-        title: 'Clear saved results?',
+        confirmLabel: translate(state.preferences.language, 'clearAll'),
+        message: translate(state.preferences.language, 'clearSavedResultsMessage'),
+        title: translate(state.preferences.language, 'clearSavedResultsQuestion'),
       },
       deleteAllSavedResultsImmediately,
     );
@@ -879,6 +913,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         assignPublisherProfile,
         beginNewDistribution,
         clearPersistentCache,
+        completeLanguageSelection,
         completeStartScreen,
         confirmDestructiveAction,
         deleteAllPublisherProfiles,
@@ -891,6 +926,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         enableServiceView,
         hasHydratedPersistedData,
         hasActiveSession: state.activeSession !== null,
+        hasSelectedLanguage,
         hasSeenStartScreen,
         incrementServiceSelection,
         movePassengerToVehicle,
@@ -947,10 +983,10 @@ export function useGroupSession() {
   return context;
 }
 
-function getStorageActionErrorMessage(error: unknown) {
+function getStorageActionErrorMessage(error: unknown, language: LanguageCode) {
   if (error instanceof Error && error.message) {
     return error.message;
   }
 
-  return 'Please try again.';
+  return translate(language, 'storageGenericError');
 }

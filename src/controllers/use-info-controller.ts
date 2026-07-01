@@ -2,10 +2,12 @@ import { router } from 'expo-router';
 import { Linking } from 'react-native';
 
 import packageMetadata from '../../package.json';
+import { useGroupSession } from '@/context/group-session-context';
 
 const repositoryUrl = 'https://github.com/atelle10/field_service_app';
 
 export function useInfoController() {
+  const { preferences } = useGroupSession();
   const goHome = () => {
     router.navigate('/results');
   };
@@ -37,6 +39,7 @@ export function useInfoController() {
     goToInfo,
     goToOptions,
     goToPublishers,
+    language: preferences.language,
     openRepository,
     repositoryUrl,
   };

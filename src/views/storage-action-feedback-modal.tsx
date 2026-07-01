@@ -4,14 +4,20 @@ import {
   type StorageActionFeedback,
   useGroupSession,
 } from '@/context/group-session-context';
+import { translate } from '@/i18n';
 import { styles } from '@/views/storage-action-feedback-modal.styles';
 
 export function GlobalStorageActionFeedbackModal() {
-  const { dismissStorageActionFeedback, storageActionFeedback } = useGroupSession();
+  const {
+    dismissStorageActionFeedback,
+    preferences,
+    storageActionFeedback,
+  } = useGroupSession();
 
   return (
     <StorageActionFeedbackModal
       feedback={storageActionFeedback}
+      language={preferences.language}
       onClose={dismissStorageActionFeedback}
     />
   );
@@ -19,9 +25,11 @@ export function GlobalStorageActionFeedbackModal() {
 
 function StorageActionFeedbackModal({
   feedback,
+  language,
   onClose,
 }: {
   feedback: StorageActionFeedback | null;
+  language: ReturnType<typeof useGroupSession>['preferences']['language'];
   onClose: () => void;
 }) {
   const isError = feedback?.tone === 'error';
@@ -60,7 +68,7 @@ function StorageActionFeedbackModal({
                 styles.buttonText,
                 isError ? styles.buttonTextError : styles.buttonTextSuccess,
               ]}>
-              OK
+              {translate(language, 'ok')}
             </Text>
           </Pressable>
         </View>

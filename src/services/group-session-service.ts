@@ -11,6 +11,13 @@ import {
   createDistributionSuggestion,
   createPlaceholderPassengers,
 } from '@/services/group-assignment-service';
+import {
+  formatDefaultPublisherLabel,
+  formatDefaultVehicleLabel,
+  Language,
+  type LanguageCode,
+  translate,
+} from '@/i18n';
 
 export type ActiveResultsState = {
   distribution: DistributionResponse | null;
@@ -65,9 +72,22 @@ export function validateNewDistribution(
   vehicleCount: number,
   defaultVehicleCapacity = DEFAULT_APP_PREFERENCES.defaultVehicleCapacity,
   strategy = DEFAULT_APP_PREFERENCES.distributionStrategy,
+  language = DEFAULT_APP_PREFERENCES.language,
 ): DistributionValidationResult {
-  const vehicles = createDefaultVehicles(vehicleCount, defaultVehicleCapacity);
-  const result = createCompletedResultsState(publisherCount, vehicles, false, strategy);
+  const vehicles = createDefaultVehicles(
+    vehicleCount,
+    defaultVehicleCapacity,
+    language,
+  );
+  const result = createCompletedResultsState(
+    publisherCount,
+    vehicles,
+    false,
+    strategy,
+    [],
+    {},
+    language,
+  );
 
   if (result.errorMessage) {
     return { ok: false, errorMessage: result.errorMessage };
@@ -83,7 +103,10 @@ export function createLoadingResultsState(
   strategy: DistributionStrategyId = DEFAULT_APP_PREFERENCES.distributionStrategy,
   publisherProfiles: PublisherProfile[] = [],
   passengerPublisherIds: Record<string, string> = {},
+  language: LanguageCode = DEFAULT_APP_PREFERENCES.language,
 ): ActiveResultsState {
+  const localizedVehicles = localizeDefaultVehicleLabels(vehicles, language);
+
   return {
     distribution: null,
     errorMessage: '',
@@ -96,7 +119,7 @@ export function createLoadingResultsState(
     serviceViewEnabled: false,
     staleMessage: '',
     strategy,
-    vehicles,
+    vehicles: localizedVehicles,
   };
 }
 
@@ -107,11 +130,14 @@ export function createCompletedResultsState(
   strategy: DistributionStrategyId = DEFAULT_APP_PREFERENCES.distributionStrategy,
   publisherProfiles: PublisherProfile[] = [],
   passengerPublisherIds: Record<string, string> = {},
+  language: LanguageCode = DEFAULT_APP_PREFERENCES.language,
 ): ActiveResultsState {
   try {
+    const localizedVehicles = localizeDefaultVehicleLabels(vehicles, language);
     const distribution = createDistributionSuggestion({
-      passengers: createPlaceholderPassengers(publisherCount),
-      vehicles,
+      language,
+      passengers: createPlaceholderPassengers(publisherCount, language),
+      vehicles: localizedVehicles,
       strategy,
     });
 
@@ -127,13 +153,17 @@ export function createCompletedResultsState(
       serviceViewEnabled: false,
       staleMessage: '',
       strategy,
-      vehicles,
+      vehicles: localizedVehicles,
     };
   } catch (error) {
+    const localizedVehicles = localizeDefaultVehicleLabels(vehicles, language);
+
     return {
       distribution: null,
       errorMessage:
-        error instanceof Error ? error.message : 'Unable to generate a distribution.',
+        error instanceof Error
+          ? error.message
+          : translate(language, 'unableToGenerateDistribution'),
       isLoading: false,
       passengerPublisherIds,
       publisherCount,
@@ -143,7 +173,7 @@ export function createCompletedResultsState(
       serviceViewEnabled: false,
       staleMessage: '',
       strategy,
-      vehicles,
+      vehicles: localizedVehicles,
     };
   }
 }
@@ -165,6 +195,7 @@ export function completeActiveCalculation(
     strategy,
     publisherProfiles,
     passengerPublisherIds,
+    sessionState.preferences.language,
   );
   const historyEntry =
     activeSession.distribution === null
@@ -186,15 +217,18 @@ export function completeActiveCalculation(
   };
 }
 
-export function markResultsStale(state: ActiveResultsState): ActiveResultsState {
-  const overCapacityMessage = createOverCapacityMessage(state);
+export function markResultsStale(
+  state: ActiveResultsState,
+  language: LanguageCode = DEFAULT_APP_PREFERENCES.language,
+): ActiveResultsState {
+  const overCapacityMessage = createOverCapacityMessage(state, language);
 
   return {
     ...state,
     rerunPromptVisible: true,
     staleMessage:
       overCapacityMessage ??
-      'Selections changed - press Recalculate to update this distribution.',
+      translate(language, 'selectionsChanged'),
   };
 }
 
@@ -204,14 +238,26 @@ export function updatePreferencesInSessionState(
 ): GroupSessionState {
   const strategyChanged =
     state.preferences.distributionStrategy !== preferences.distributionStrategy;
+  const languageChanged = state.preferences.language !== preferences.language;
+  const localizedActiveSession =
+    languageChanged && state.activeSession
+      ? localizeActiveSessionDefaultLabels(
+          state.activeSession,
+          state.preferences.language,
+          preferences.language,
+        )
+      : state.activeSession;
   const activeSession =
-    strategyChanged && state.activeSession
-      ? markResultsStale({
-          ...state.activeSession,
+    strategyChanged && localizedActiveSession
+      ? markResultsStale(
+          {
+          ...localizedActiveSession,
           errorMessage: '',
           strategy: preferences.distributionStrategy,
-        })
-      : state.activeSession;
+          },
+          preferences.language,
+        )
+      : localizedActiveSession;
 
   return {
     ...state,
@@ -365,11 +411,12 @@ export function restoreResultHistoryEntryInSessionState(
 export function getHistoryPassengerDisplayName(
   entry: ResultsHistoryEntry,
   passengerId: string,
+  language: LanguageCode = DEFAULT_APP_PREFERENCES.language,
 ) {
   const publisherId = entry.passengerPublisherIds[passengerId];
   const publisher = entry.publisherProfiles.find((profile) => profile.id === publisherId);
 
-  return publisher?.name ?? formatPlaceholderPassengerLabel(passengerId);
+  return publisher?.name ?? formatPlaceholderPassengerLabel(passengerId, language);
 }
 
 export function movePassengerToVehicleInResultsState(
@@ -603,17 +650,22 @@ export function deleteAllPublisherProfilesFromSessionState(
   };
 }
 
-export function getPassengerDisplayName(state: ActiveResultsState, passengerId: string) {
+export function getPassengerDisplayName(
+  state: ActiveResultsState,
+  passengerId: string,
+  language: LanguageCode = DEFAULT_APP_PREFERENCES.language,
+) {
   const publisherId = state.passengerPublisherIds[passengerId];
   const publisher = state.publisherProfiles.find((profile) => profile.id === publisherId);
 
-  return publisher?.name ?? formatPlaceholderPassengerLabel(passengerId);
+  return publisher?.name ?? formatPlaceholderPassengerLabel(passengerId, language);
 }
 
 export function resizeVehicles(
   vehicles: VehicleInput[],
   vehicleCount: number,
   defaultVehicleCapacity = DEFAULT_APP_PREFERENCES.defaultVehicleCapacity,
+  language: LanguageCode = DEFAULT_APP_PREFERENCES.language,
 ) {
   if (vehicleCount <= vehicles.length) {
     return vehicles.slice(0, vehicleCount);
@@ -622,6 +674,7 @@ export function resizeVehicles(
   const additionalVehicles = createDefaultVehicles(
     vehicleCount,
     defaultVehicleCapacity,
+    language,
   ).slice(vehicles.length);
   return [...vehicles, ...additionalVehicles];
 }
@@ -643,8 +696,17 @@ function createUniquePublisherProfileId(publisherProfiles: PublisherProfile[]) {
   return nextId;
 }
 
-function formatPlaceholderPassengerLabel(passengerId: string) {
-  return passengerId.replace('publisher-', 'Publisher ');
+function formatPlaceholderPassengerLabel(
+  passengerId: string,
+  language: LanguageCode,
+) {
+  const index = Number(passengerId.replace('publisher-', ''));
+
+  if (Number.isInteger(index) && index > 0) {
+    return formatDefaultPublisherLabel(language, index);
+  }
+
+  return passengerId;
 }
 
 function removePublisherMappings(
@@ -712,7 +774,74 @@ function createResultsHistoryEntry(
   };
 }
 
-function createOverCapacityMessage(state: ActiveResultsState) {
+function localizeActiveSessionDefaultLabels(
+  state: ActiveResultsState,
+  previousLanguage: LanguageCode,
+  nextLanguage: LanguageCode,
+): ActiveResultsState {
+  const vehicles = localizeDefaultVehicleLabels(
+    state.vehicles,
+    nextLanguage,
+    previousLanguage,
+  );
+
+  return {
+    ...state,
+    distribution: state.distribution
+      ? {
+          ...state.distribution,
+          assignments: state.distribution.assignments.map((assignment) => {
+            const vehicle = vehicles.find(
+              (nextVehicle) => nextVehicle.id === assignment.vehicleId,
+            );
+
+            return vehicle ? { ...assignment, label: vehicle.label } : assignment;
+          }),
+        }
+      : state.distribution,
+    vehicles,
+  };
+}
+
+function localizeDefaultVehicleLabels(
+  vehicles: VehicleInput[],
+  nextLanguage: LanguageCode,
+  previousLanguage: LanguageCode = Language.English,
+) {
+  return vehicles.map((vehicle) => {
+    const index = getDefaultVehicleIndex(vehicle);
+
+    if (
+      index === null ||
+      (vehicle.label !== formatDefaultVehicleLabel(previousLanguage, index) &&
+        vehicle.label !== formatDefaultVehicleLabel(Language.English, index) &&
+        vehicle.label !== formatDefaultVehicleLabel(Language.Spanish, index))
+    ) {
+      return vehicle;
+    }
+
+    return {
+      ...vehicle,
+      label: formatDefaultVehicleLabel(nextLanguage, index),
+    };
+  });
+}
+
+function getDefaultVehicleIndex(vehicle: VehicleInput) {
+  const match = /^vehicle-(\d+)$/.exec(vehicle.id);
+
+  if (!match) {
+    return null;
+  }
+
+  const index = Number(match[1]);
+  return Number.isInteger(index) && index > 0 ? index : null;
+}
+
+function createOverCapacityMessage(
+  state: ActiveResultsState,
+  language: LanguageCode,
+) {
   const assignments = state.distribution?.assignments ?? [];
 
   for (const vehicle of state.vehicles) {
@@ -722,7 +851,9 @@ function createOverCapacityMessage(state: ActiveResultsState) {
     const assignedCount = assignment?.passengerIds.length ?? 0;
 
     if (assignedCount > vehicle.capacity) {
-      return `${vehicle.label} has ${assignedCount} publishers assigned but only ${vehicle.capacity} seats. Press Recalculate to fix the distribution.`;
+      return language === Language.Spanish
+        ? `${vehicle.label} tiene ${assignedCount} publicadores asignados, pero solo ${vehicle.capacity} asientos. Toca Recalcular para corregir la distribución.`
+        : `${vehicle.label} has ${assignedCount} publishers assigned but only ${vehicle.capacity} seats. Press Recalculate to fix the distribution.`;
     }
   }
 

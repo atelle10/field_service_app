@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGroupSession } from '@/context/group-session-context';
+import { translate } from '@/i18n';
 import { colors, radii } from '@/styles/theme';
 
 export default function StartScreen() {
@@ -11,7 +12,9 @@ export default function StartScreen() {
     completeStartScreen,
     hasActiveSession,
     hasHydratedPersistedData,
+    hasSelectedLanguage,
     hasSeenStartScreen,
+    preferences,
   } = useGroupSession();
 
   useEffect(() => {
@@ -19,12 +22,22 @@ export default function StartScreen() {
       return;
     }
 
+    if (!hasSelectedLanguage) {
+      router.replace('/language');
+      return;
+    }
+
     router.replace(hasActiveSession ? '/results' : '/select');
-  }, [hasActiveSession, hasHydratedPersistedData, hasSeenStartScreen]);
+  }, [
+    hasActiveSession,
+    hasHydratedPersistedData,
+    hasSelectedLanguage,
+    hasSeenStartScreen,
+  ]);
 
   const startSetup = () => {
     completeStartScreen();
-    router.replace('/select');
+    router.replace('/language');
   };
 
   if (!hasHydratedPersistedData || hasSeenStartScreen) {
@@ -35,7 +48,7 @@ export default function StartScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
         <Image
-          accessibilityLabel="Field Service Assistant logo"
+          accessibilityLabel={translate(preferences.language, 'appLogo')}
           source={require('../assets/field_service_assistant_logo_2.png')}
           style={styles.logo}
         />
@@ -43,7 +56,9 @@ export default function StartScreen() {
           accessibilityRole="button"
           onPress={startSetup}
           style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}>
-          <Text style={styles.startButtonText}>Start</Text>
+          <Text style={styles.startButtonText}>
+            {translate(preferences.language, 'start')}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>

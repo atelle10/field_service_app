@@ -2,6 +2,8 @@ import { Picker } from '@react-native-picker/picker';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useGroupSession } from '@/context/group-session-context';
+import { translate } from '@/i18n';
 import { colors, radii } from '@/styles/theme';
 
 type CountPickerScreenProps = {
@@ -19,6 +21,8 @@ export function CountPickerScreen({
   onCountChange,
   onConfirm,
 }: CountPickerScreenProps) {
+  const { preferences } = useGroupSession();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
@@ -40,7 +44,9 @@ export function CountPickerScreen({
           accessibilityRole="button"
           onPress={onConfirm}
           style={({ pressed }) => [styles.confirmButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.confirmButtonText}>Confirm</Text>
+          <Text style={styles.confirmButtonText}>
+            {translate(preferences.language, 'confirm')}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>

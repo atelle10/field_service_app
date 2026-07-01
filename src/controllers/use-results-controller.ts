@@ -5,6 +5,7 @@ import type { PublisherProfile } from '@/models/group-assignment';
 import {
   getPassengerDisplayName as getPassengerDisplayNameFromState,
 } from '@/services/group-session-service';
+import { formatDefaultPublisherLabel } from '@/i18n';
 
 export function useResultsController() {
   const {
@@ -53,10 +54,17 @@ export function useResultsController() {
 
   const getPassengerDisplayName = (passengerId: string) => {
     if (!activeSession) {
-      return passengerId.replace('publisher-', 'Publisher ');
+      const index = Number(passengerId.replace('publisher-', ''));
+      return Number.isInteger(index) && index > 0
+        ? formatDefaultPublisherLabel(preferences.language, index)
+        : passengerId;
     }
 
-    return getPassengerDisplayNameFromState(activeSession, passengerId);
+    return getPassengerDisplayNameFromState(
+      activeSession,
+      passengerId,
+      preferences.language,
+    );
   };
 
   const hasAssignedPublisherProfile = (passengerId: string) => {
@@ -82,6 +90,7 @@ export function useResultsController() {
     isLoading: activeSession?.isLoading ?? false,
     movePassengerToVehicle,
     preferences,
+    language: preferences.language,
     publisherCount: activeSession?.publisherCount ?? 0,
     publisherProfiles: getSortedPublishers(
       activeSession?.publisherProfiles ?? [],

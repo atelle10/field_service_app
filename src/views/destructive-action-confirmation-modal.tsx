@@ -4,6 +4,7 @@ import {
   type DestructiveActionConfirmation,
   useGroupSession,
 } from '@/context/group-session-context';
+import { translate } from '@/i18n';
 import { styles } from '@/views/destructive-action-confirmation-modal.styles';
 
 export function GlobalDestructiveActionConfirmationModal() {
@@ -11,11 +12,13 @@ export function GlobalDestructiveActionConfirmationModal() {
     confirmDestructiveAction,
     destructiveActionConfirmation,
     dismissDestructiveActionConfirmation,
+    preferences,
   } = useGroupSession();
 
   return (
     <DestructiveActionConfirmationModal
       confirmation={destructiveActionConfirmation}
+      language={preferences.language}
       onCancel={dismissDestructiveActionConfirmation}
       onConfirm={confirmDestructiveAction}
     />
@@ -24,10 +27,12 @@ export function GlobalDestructiveActionConfirmationModal() {
 
 function DestructiveActionConfirmationModal({
   confirmation,
+  language,
   onCancel,
   onConfirm,
 }: {
   confirmation: DestructiveActionConfirmation | null;
+  language: ReturnType<typeof useGroupSession>['preferences']['language'];
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -51,7 +56,9 @@ function DestructiveActionConfirmationModal({
                 styles.cancelButton,
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>
+                {translate(language, 'cancel')}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -63,7 +70,7 @@ function DestructiveActionConfirmationModal({
                 pressed && styles.buttonPressed,
               ]}>
               <Text style={styles.confirmButtonText}>
-                {confirmation?.confirmLabel ?? 'Confirm'}
+                {confirmation?.confirmLabel ?? translate(language, 'confirm')}
               </Text>
             </Pressable>
           </View>

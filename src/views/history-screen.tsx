@@ -4,6 +4,13 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ResultsHistoryEntry } from '@/services/group-session-service';
+import {
+  formatPublishersCount,
+  formatSeatLabel,
+  formatVehiclesCount,
+  type LanguageCode,
+  translate,
+} from '@/i18n';
 import { colors } from '@/styles/theme';
 import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/history-screen.styles';
@@ -22,6 +29,7 @@ type HistoryScreenProps = {
   goToPublishers: () => void;
   restoreResult: (resultId: string) => void;
   savedResults: ResultsHistoryEntry[];
+  language: LanguageCode;
 };
 
 export function HistoryScreen({
@@ -35,7 +43,10 @@ export function HistoryScreen({
   goToPublishers,
   restoreResult,
   savedResults,
+  language,
 }: HistoryScreenProps) {
+  const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) =>
+    translate(language, key, params);
   const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const hasSavedResults = savedResults.length > 0;
@@ -66,7 +77,7 @@ export function HistoryScreen({
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Pressable
-              accessibilityLabel={menuOpen ? 'Close menu' : 'Open menu'}
+              accessibilityLabel={menuOpen ? t('closeMenu') : t('openMenu')}
               accessibilityRole="button"
               onPress={() => setMenuOpen((currentValue) => !currentValue)}
               style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}>
@@ -74,7 +85,7 @@ export function HistoryScreen({
             </Pressable>
 
             <View style={styles.titlePanel}>
-              <Text style={styles.title}>History</Text>
+              <Text style={styles.title}>{t('history')}</Text>
             </View>
           </View>
 
@@ -85,6 +96,7 @@ export function HistoryScreen({
                   deleteSavedResult={deleteSavedResult}
                   expanded={expandedResultId === result.id}
                   getHistoryPassengerDisplayName={getHistoryPassengerDisplayName}
+                  language={language}
                   key={result.id}
                   restoreResult={restoreResult}
                   result={result}
@@ -94,9 +106,9 @@ export function HistoryScreen({
             </View>
           ) : (
             <View style={styles.emptyPanel}>
-              <Text style={styles.emptyTitle}>No saved results</Text>
+              <Text style={styles.emptyTitle}>{t('noSavedResults')}</Text>
               <Text style={styles.emptyText}>
-                Saved distributions will appear here after you tap Save.
+                {t('noSavedResultsText')}
               </Text>
             </View>
           )}
@@ -116,7 +128,7 @@ export function HistoryScreen({
                   styles.clearAllButtonText,
                   !hasSavedResults && styles.disabledButtonText,
                 ]}>
-                Clear All
+                {t('clearAll')}
               </Text>
             </Pressable>
           </View>
@@ -130,6 +142,7 @@ function HistoryResultCard({
   deleteSavedResult,
   expanded,
   getHistoryPassengerDisplayName,
+  language,
   restoreResult,
   result,
   toggleResult,
@@ -140,6 +153,7 @@ function HistoryResultCard({
     entry: ResultsHistoryEntry,
     passengerId: string,
   ) => string;
+  language: LanguageCode;
   restoreResult: (resultId: string) => void;
   result: ResultsHistoryEntry;
   toggleResult: (resultId: string) => void;
@@ -154,12 +168,14 @@ function HistoryResultCard({
             styles.historyCardTitleButton,
             pressed && styles.buttonPressed,
           ]}>
-          <Text style={styles.historyCardTitle}>{formatHistoryResultLabel(result)}</Text>
+          <Text style={styles.historyCardTitle}>
+            {formatHistoryResultLabel(result, language)}
+          </Text>
           <Text style={styles.historyCardToggle}>{expanded ? '-' : '+'}</Text>
         </Pressable>
 
         <Pressable
-          accessibilityLabel="Delete saved result"
+          accessibilityLabel={translate(language, 'deleteSavedResult')}
           accessibilityRole="button"
           onPress={() => deleteSavedResult(result.id)}
           style={({ pressed }) => [
@@ -174,10 +190,10 @@ function HistoryResultCard({
         <View style={styles.historyCardBody}>
           <View style={styles.historySummaryRow}>
             <Text style={styles.historySummaryText}>
-              Vehicles used: {result.distribution.summary.vehiclesUsed}
+              {translate(language, 'vehiclesUsed')}: {result.distribution.summary.vehiclesUsed}
             </Text>
             <Text style={styles.historySummaryText}>
-              Open seats: {result.distribution.summary.unusedSeats}
+              {translate(language, 'open')}: {result.distribution.summary.unusedSeats}
             </Text>
           </View>
 
@@ -196,14 +212,15 @@ function HistoryResultCard({
                   <View style={styles.historyVehicleHeader}>
                     <Text style={styles.historyVehicleName}>{assignment.label}</Text>
                     <Text style={styles.historyVehicleSeats}>
-                      {assignment.passengerIds.length}/{assignment.capacity} seats -{' '}
-                      {availableSeats} available
+                      {assignment.passengerIds.length}/{assignment.capacity}{' '}
+                      {formatSeatLabel(language, assignment.capacity)} - {availableSeats}{' '}
+                      {language === 'es' ? 'disponibles' : 'available'}
                     </Text>
                   </View>
                   <Text style={styles.historyVehiclePublishers}>
                     {publisherLabels.length > 0
                       ? publisherLabels.join(', ')
-                      : 'No publishers'}
+                      : translate(language, 'noPublishers')}
                   </Text>
                 </View>
               );
@@ -217,7 +234,9 @@ function HistoryResultCard({
               styles.historyRestoreButton,
               pressed && styles.buttonPressed,
             ]}>
-            <Text style={styles.historyRestoreButtonText}>Restore</Text>
+            <Text style={styles.historyRestoreButtonText}>
+              {translate(language, 'restore')}
+            </Text>
           </Pressable>
         </View>
       )}
@@ -225,19 +244,17 @@ function HistoryResultCard({
   );
 }
 
-function formatHistoryResultLabel(result: ResultsHistoryEntry) {
-  const timestamp = formatHistoryTimestamp(result.createdAt);
-  const publisherLabel = result.publisherCount === 1 ? 'publisher' : 'publishers';
-  const vehicleLabel = result.vehicles.length === 1 ? 'vehicle' : 'vehicles';
+function formatHistoryResultLabel(result: ResultsHistoryEntry, language: LanguageCode) {
+  const timestamp = formatHistoryTimestamp(result.createdAt, language);
 
-  return `${timestamp} - ${result.publisherCount} ${publisherLabel} - ${result.vehicles.length} ${vehicleLabel}`;
+  return `${timestamp} - ${formatPublishersCount(language, result.publisherCount)} - ${formatVehiclesCount(language, result.vehicles.length)}`;
 }
 
-function formatHistoryTimestamp(createdAt: string) {
+function formatHistoryTimestamp(createdAt: string, language: LanguageCode) {
   const date = new Date(createdAt);
 
   if (Number.isNaN(date.getTime())) {
-    return 'Saved result';
+    return translate(language, 'savedResult');
   }
 
   const month = date.getMonth() + 1;

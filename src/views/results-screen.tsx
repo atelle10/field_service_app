@@ -49,6 +49,12 @@ import {
   type VehicleInput,
   vehicleCountOptions,
 } from '@/models/group-assignment';
+import {
+  formatPublishersCount,
+  formatSeatLabel,
+  formatVehiclesCount,
+  translate,
+} from '@/i18n';
 import { colors } from '@/styles/theme';
 import { AppMenuDrawer, DrawerEdgeSwipeArea } from '@/views/app-menu-drawer';
 import { styles } from '@/views/results-screen.styles';
@@ -182,6 +188,11 @@ export function ResultsScreen({
   vehicleCount,
   vehicles,
 }: ResultsScreenProps) {
+  const t = useCallback(
+    (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) =>
+      translate(preferences.language, key, params),
+    [preferences.language],
+  );
   const [activeCountPicker, setActiveCountPicker] = useState<ActiveCountPicker>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dropWarning, setDropWarning] = useState('');
@@ -468,7 +479,7 @@ export function ResultsScreen({
       };
 
       if (!dropZone) {
-        finishInvalidDrop('Drop on a vehicle with open seats.');
+        finishInvalidDrop(t('dropOnVehicleWithOpenSeats'));
         return;
       }
 
@@ -478,7 +489,7 @@ export function ResultsScreen({
       }
 
       if (!dropZone.canAccept) {
-        finishInvalidDrop('Vehicle is full.');
+        finishInvalidDrop(t('vehicleFull'));
         return;
       }
 
@@ -505,6 +516,7 @@ export function ResultsScreen({
       findDropZone,
       movePassengerToVehicle,
       showDropWarning,
+      t,
     ],
   );
 
@@ -615,7 +627,7 @@ export function ResultsScreen({
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingScreen}>
           <ActivityIndicator color={colors.mint} size="large" />
-          <Text style={styles.loadingText}>Calculating distribution...</Text>
+          <Text style={styles.loadingText}>{t('calculatingDistribution')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -646,6 +658,7 @@ export function ResultsScreen({
         onRestoreDefault={restoreSelectedPassengerDefaultLabel}
         onSelectProfile={selectPublisherProfile}
         publisherProfiles={publisherProfiles}
+        t={t}
         visible={selectedPassengerId !== null}
       />
 
@@ -657,7 +670,7 @@ export function ResultsScreen({
           onScrollBeginDrag={closeCountPicker}>
           {activeCountPicker && (
             <Pressable
-              accessibilityLabel="Close count picker"
+              accessibilityLabel={t('closeCountPicker')}
               accessibilityRole="button"
               onPress={closeCountPicker}
               style={styles.pickerDismissLayer}
@@ -667,7 +680,7 @@ export function ResultsScreen({
           <View style={styles.countSelector}>
             <View style={styles.countHeader}>
               <Pressable
-                accessibilityLabel={menuOpen ? 'Close menu' : 'Open menu'}
+                accessibilityLabel={menuOpen ? t('closeMenu') : t('openMenu')}
                 accessibilityRole="button"
                 onPress={() => {
                   setActiveCountPicker(null);
@@ -684,10 +697,11 @@ export function ResultsScreen({
                     { transform: [{ scale: serviceBannerPulse }] },
                   ]}>
                   <Text style={styles.serviceActiveBannerTitle}>
-                    Service View Active
+                    {t('serviceViewActive')}
                   </Text>
                   <Text style={styles.serviceActiveBannerMeta}>
-                    {publisherCount} publishers · {vehicleCount} vehicles
+                    {formatPublishersCount(preferences.language, publisherCount)} ·{' '}
+                    {formatVehiclesCount(preferences.language, vehicleCount)}
                   </Text>
                 </RNAnimated.View>
               ) : (
@@ -707,7 +721,7 @@ export function ResultsScreen({
                         styles.countButtonText,
                         !hasActiveSession && styles.countButtonTextDisabled,
                       ]}>
-                      Publishers: {publisherCount}
+                      {t('publishers')}: {publisherCount}
                     </Text>
                   </Pressable>
 
@@ -726,7 +740,7 @@ export function ResultsScreen({
                         styles.countButtonText,
                         !hasActiveSession && styles.countButtonTextDisabled,
                       ]}>
-                      Vehicles: {vehicleCount}
+                      {t('vehicles')}: {vehicleCount}
                     </Text>
                   </Pressable>
                 </View>
@@ -772,7 +786,7 @@ export function ResultsScreen({
                 pressed && styles.buttonPressed,
               ]}>
               <ListRestart color={colors.text} size={16} strokeWidth={2.5} />
-              <Text style={styles.actionButtonText}>Start Over</Text>
+              <Text style={styles.actionButtonText}>{t('startOver')}</Text>
             </Pressable>
 
             <RNAnimated.View style={{ transform: [{ scale: recalculatePulse }] }}>
@@ -798,7 +812,7 @@ export function ResultsScreen({
                     (!rerunPromptVisible || serviceViewEnabled) &&
                       styles.recalculateButtonTextDisabled,
                   ]}>
-                  Recalculate
+                  {t('recalculate')}
                 </Text>
               </Pressable>
             </RNAnimated.View>
@@ -806,7 +820,7 @@ export function ResultsScreen({
 
           {!!errorMessage && (
             <View style={styles.errorPanel}>
-              <Text style={styles.errorTitle}>Not enough seats</Text>
+              <Text style={styles.errorTitle}>{t('notEnoughSeats')}</Text>
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           )}
@@ -819,10 +833,9 @@ export function ResultsScreen({
 
           {!hasActiveSession && (
             <View style={styles.emptyResultsPanel}>
-              <Text style={styles.emptyResultsTitle}>No active distribution</Text>
+              <Text style={styles.emptyResultsTitle}>{t('noActiveDistribution')}</Text>
               <Text style={styles.emptyResultsText}>
-                This home screen is ready, but no publisher or vehicle counts have been
-                selected yet. Use Start Over to begin a new distribution.
+                {t('noActiveDistributionText')}
               </Text>
             </View>
           )}
@@ -836,24 +849,24 @@ export function ResultsScreen({
                   styles.summaryToggle,
                   pressed && styles.buttonPressed,
                 ]}>
-                <Text style={styles.summaryToggleText}>Distribution Summary</Text>
+                <Text style={styles.summaryToggleText}>{t('distributionSummary')}</Text>
                 <Text style={styles.summaryToggleIcon}>{summaryExpanded ? '-' : '+'}</Text>
               </Pressable>
 
               {summaryExpanded && (
                 <View style={styles.summaryRow}>
                   <SummaryItem
-                    label="Vehicles Used"
+                    label={t('vehiclesUsed')}
                     value={String(distribution.summary.vehiclesUsed)}
                     tone="forest"
                   />
                   <SummaryItem
-                    label="Total Seats"
+                    label={t('totalSeats')}
                     value={String(distribution.summary.totalCapacity)}
                     tone="purple"
                   />
                   <SummaryItem
-                    label="Open"
+                    label={t('open')}
                     value={String(distribution.summary.unusedSeats)}
                     tone="mint"
                   />
@@ -894,7 +907,7 @@ export function ResultsScreen({
                       {isEditingVehicleLabel ? (
                         <View style={styles.vehicleNameEditor}>
                           <TextInput
-                            accessibilityLabel={`${vehicle.label} name`}
+                            accessibilityLabel={t('vehicleName', { label: vehicle.label })}
                             autoFocus
                             onChangeText={setEditingVehicleLabel}
                             onSubmitEditing={() => saveEditingVehicleLabel(vehicle)}
@@ -906,7 +919,7 @@ export function ResultsScreen({
 
                           <View style={styles.vehicleNameEditActions}>
                             <Pressable
-                              accessibilityLabel="Save vehicle name"
+                              accessibilityLabel={t('saveVehicleName')}
                               accessibilityRole="button"
                               onPress={() => saveEditingVehicleLabel(vehicle)}
                               style={({ pressed }) => [
@@ -918,7 +931,7 @@ export function ResultsScreen({
                             </Pressable>
 
                             <Pressable
-                              accessibilityLabel="Cancel vehicle name edit"
+                              accessibilityLabel={t('cancelVehicleNameEdit')}
                               accessibilityRole="button"
                               onPress={cancelEditingVehicleLabel}
                               style={({ pressed }) => [
@@ -931,7 +944,11 @@ export function ResultsScreen({
                         </View>
                       ) : (
                         <Pressable
-                          accessibilityLabel={`Edit ${vehicle.label} name`}
+                          accessibilityLabel={
+                            preferences.language === 'es'
+                              ? `Editar nombre de ${vehicle.label}`
+                              : `Edit ${vehicle.label} name`
+                          }
                           accessibilityRole="button"
                           disabled={serviceViewEnabled}
                           onPress={() => startEditingVehicleLabel(vehicle)}
@@ -953,8 +970,9 @@ export function ResultsScreen({
                           styles.vehicleMeta,
                           isOverCapacity && styles.vehicleMetaOverCapacity,
                         ]}>
-                        {passengerIds.length}/{vehicle.capacity} seats
-                        {assignment?.inUse === false ? ' - unused' : ''}
+                        {passengerIds.length}/{vehicle.capacity}{' '}
+                        {formatSeatLabel(preferences.language, vehicle.capacity)}
+                        {assignment?.inUse === false ? ` - ${t('unused')}` : ''}
                       </Text>
                     </View>
 
@@ -1014,7 +1032,10 @@ export function ResultsScreen({
                   {isOverCapacity && (
                     <View style={styles.vehicleWarning}>
                       <Text style={styles.vehicleWarningText}>
-                        {formatOverCapacityMessage(overCapacityCount)}
+                        {formatOverCapacityMessage(
+                          overCapacityCount,
+                          preferences.language,
+                        )}
                       </Text>
                     </View>
                   )}
@@ -1026,6 +1047,7 @@ export function ResultsScreen({
                       return (
                         serviceViewEnabled ? (
                           <ServicePublisherChip
+                            accessibilityLabel={t('markSelected', { label: passengerLabel })}
                             count={serviceSelections[passengerId] ?? 0}
                             isOverCapacity={isOverCapacity}
                             key={passengerId}
@@ -1034,6 +1056,11 @@ export function ResultsScreen({
                           />
                         ) : (
                           <DraggablePublisherChip
+                            accessibilityLabel={
+                              preferences.language === 'es'
+                                ? `Editar ${passengerLabel}`
+                                : `Edit ${passengerLabel}`
+                            }
                             dragOpacity={dragOpacity}
                             dragScale={dragScale}
                             dragX={dragX}
@@ -1056,12 +1083,12 @@ export function ResultsScreen({
 
                     {Array.from({ length: openSeatCount }, (_, index) => (
                       <View key={`${vehicle.id}-open-${index}`} style={styles.openSeat}>
-                        <Text style={styles.openSeatText}>Open</Text>
+                        <Text style={styles.openSeatText}>{t('open')}</Text>
                       </View>
                     ))}
 
                     {passengerIds.length === 0 && openSeatCount === 0 && (
-                      <Text style={styles.emptySeatText}>No seats available</Text>
+                      <Text style={styles.emptySeatText}>{t('noSeatsAvailable')}</Text>
                     )}
                   </View>
                 </AnimatedVehicleCard>
@@ -1080,7 +1107,7 @@ export function ResultsScreen({
                     pressed && styles.buttonPressed,
                   ]}>
                   <Save color={colors.mint} size={16} strokeWidth={2.5} />
-                  <Text style={styles.saveResultButtonText}>Save</Text>
+                  <Text style={styles.saveResultButtonText}>{t('save')}</Text>
                 </Pressable>
               )}
 
@@ -1092,7 +1119,7 @@ export function ResultsScreen({
                   pressed && styles.buttonPressed,
                 ]}>
                 <History color={colors.mint} size={16} strokeWidth={2.5} />
-                <Text style={styles.historyFooterButtonText}>History</Text>
+                <Text style={styles.historyFooterButtonText}>{t('history')}</Text>
               </Pressable>
 
               <Pressable
@@ -1123,7 +1150,7 @@ export function ResultsScreen({
                     serviceViewEnabled && styles.serviceFooterButtonTextActive,
                     !distribution && styles.footerButtonTextDisabled,
                   ]}>
-                  Service View
+                  {t('serviceView')}
                 </Text>
               </Pressable>
             </View>
@@ -1202,6 +1229,7 @@ const AnimatedVehicleCard = forwardRef<
 });
 
 function DraggablePublisherChip({
+  accessibilityLabel,
   dragOpacity,
   dragScale,
   dragX,
@@ -1217,6 +1245,7 @@ function DraggablePublisherChip({
   passengerId,
   vehicleId,
 }: {
+  accessibilityLabel: string;
   dragOpacity: SharedValue<number>;
   dragScale: SharedValue<number>;
   dragX: SharedValue<number>;
@@ -1268,7 +1297,7 @@ function DraggablePublisherChip({
   return (
     <GestureDetector gesture={dragGesture}>
       <Pressable
-        accessibilityLabel={`Edit ${label}`}
+        accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [
@@ -1290,11 +1319,13 @@ function DraggablePublisherChip({
 }
 
 function ServicePublisherChip({
+  accessibilityLabel,
   count,
   isOverCapacity,
   label,
   onPress,
 }: {
+  accessibilityLabel: string;
   count: number;
   isOverCapacity: boolean;
   label: string;
@@ -1302,7 +1333,7 @@ function ServicePublisherChip({
 }) {
   return (
     <Pressable
-      accessibilityLabel={`Mark ${label} selected`}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -1337,6 +1368,7 @@ function PublisherEditorModal({
   onRestoreDefault,
   onSelectProfile,
   publisherProfiles,
+  t,
   visible,
 }: {
   canRestoreDefault: boolean;
@@ -1348,6 +1380,7 @@ function PublisherEditorModal({
   onRestoreDefault: () => void;
   onSelectProfile: (publisherId: string) => void;
   publisherProfiles: PublisherProfile[];
+  t: (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => string;
   visible: boolean;
 }) {
   const canConfirm = nameInput.trim().length > 0;
@@ -1361,9 +1394,9 @@ function PublisherEditorModal({
       <View style={styles.publisherModalOverlay}>
         <View style={styles.publisherModalCard}>
           <View style={styles.publisherModalHeader}>
-            <Text style={styles.publisherModalTitle}>Edit Publisher</Text>
+            <Text style={styles.publisherModalTitle}>{t('editPublisher')}</Text>
             <Pressable
-              accessibilityLabel="Close publisher editor"
+              accessibilityLabel={t('closePublisherEditor')}
               accessibilityRole="button"
               onPress={onCancel}
               style={({ pressed }) => [
@@ -1381,7 +1414,7 @@ function PublisherEditorModal({
 
             {canRestoreDefault && (
               <Pressable
-                accessibilityLabel="Restore default publisher label"
+                accessibilityLabel={t('restoreDefaultPublisherLabel')}
                 accessibilityRole="button"
                 onPress={onRestoreDefault}
                 style={({ pressed }) => [
@@ -1395,7 +1428,7 @@ function PublisherEditorModal({
 
           {publisherProfiles.length > 0 && (
             <View style={styles.savedPublishersSection}>
-              <Text style={styles.savedPublishersLabel}>Saved Publishers</Text>
+              <Text style={styles.savedPublishersLabel}>{t('savedPublishers')}</Text>
               <View style={styles.savedPublisherList}>
                 {publisherProfiles.map((publisher) => (
                   <Pressable
@@ -1414,11 +1447,11 @@ function PublisherEditorModal({
           )}
 
           <TextInput
-            accessibilityLabel="Publisher name"
+            accessibilityLabel={t('publisherName')}
             autoCapitalize="words"
             onChangeText={onChangeName}
             onSubmitEditing={onConfirm}
-            placeholder="Enter publisher name"
+            placeholder={t('enterPublisherName')}
             placeholderTextColor={colors.textSubtle}
             returnKeyType="done"
             style={styles.publisherNameInput}
@@ -1434,7 +1467,9 @@ function PublisherEditorModal({
                 styles.publisherModalSecondaryButton,
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.publisherModalSecondaryButtonText}>Cancel</Text>
+              <Text style={styles.publisherModalSecondaryButtonText}>
+                {t('cancel')}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -1453,7 +1488,7 @@ function PublisherEditorModal({
                   styles.publisherModalPrimaryButtonText,
                   !canConfirm && styles.publisherModalDisabledButtonText,
                 ]}>
-                Confirm
+                {t('confirm')}
               </Text>
             </Pressable>
           </View>
@@ -1537,7 +1572,15 @@ function SummaryItem({
   );
 }
 
-function formatOverCapacityMessage(overCapacityCount: number) {
+function formatOverCapacityMessage(
+  overCapacityCount: number,
+  language: AppPreferences['language'],
+) {
+  if (language === 'es') {
+    const publisherLabel = overCapacityCount === 1 ? 'publicador' : 'publicadores';
+    return `${overCapacityCount} ${publisherLabel} por encima de la capacidad. Aumenta los asientos o toca Recalcular.`;
+  }
+
   const publisherLabel = overCapacityCount === 1 ? 'publisher' : 'publishers';
   return `${overCapacityCount} assigned ${publisherLabel} over capacity. Increase seats or press Recalculate.`;
 }

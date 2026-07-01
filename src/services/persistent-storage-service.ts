@@ -6,23 +6,27 @@ import {
   type AppPreferences,
   type PublisherProfile,
 } from '@/models/group-assignment';
+import { isLanguageCode, Language } from '@/i18n';
 import type { ResultsHistoryEntry } from '@/services/group-session-service';
 
 const PUBLISHERS_STORAGE_KEY = 'fieldServiceAssistant:v1:publishers';
 const SAVED_RESULTS_STORAGE_KEY = 'fieldServiceAssistant:v1:savedResults';
 const PREFERENCES_STORAGE_KEY = 'fieldServiceAssistant:v1:preferences';
 const START_SCREEN_STORAGE_KEY = 'fieldServiceAssistant:v1:startScreenSeen';
+const LANGUAGE_SELECTED_STORAGE_KEY = 'fieldServiceAssistant:v1:languageSelected';
 const APP_STORAGE_KEYS = [
   PUBLISHERS_STORAGE_KEY,
   SAVED_RESULTS_STORAGE_KEY,
   PREFERENCES_STORAGE_KEY,
   START_SCREEN_STORAGE_KEY,
+  LANGUAGE_SELECTED_STORAGE_KEY,
 ] as const;
 
 type AsyncStorageModule = typeof AsyncStorageStatic;
 
 export type PersistedGroupData = {
   hasSeenStartScreen: boolean;
+  hasSelectedLanguage: boolean;
   preferences: AppPreferences;
   publisherProfiles: PublisherProfile[];
   savedResults: ResultsHistoryEntry[];
@@ -36,16 +40,19 @@ export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
     [, savedResultsValue],
     [, preferencesValue],
     [, startScreenSeenValue],
+    [, languageSelectedValue],
   ] =
     await asyncStorage.multiGet([
       PUBLISHERS_STORAGE_KEY,
       SAVED_RESULTS_STORAGE_KEY,
       PREFERENCES_STORAGE_KEY,
       START_SCREEN_STORAGE_KEY,
+      LANGUAGE_SELECTED_STORAGE_KEY,
     ]);
 
   return {
     hasSeenStartScreen: startScreenSeenValue === 'true',
+    hasSelectedLanguage: languageSelectedValue === 'true',
     preferences: parseAppPreferences(preferencesValue),
     publisherProfiles: parsePublisherProfiles(publishersValue),
     savedResults: parseSavedResults(savedResultsValue),
@@ -54,6 +61,7 @@ export async function loadPersistedGroupData(): Promise<PersistedGroupData> {
       savedResultsValue ?? '',
       preferencesValue ?? '',
       startScreenSeenValue ?? '',
+      languageSelectedValue ?? '',
     ]),
   };
 }
@@ -110,6 +118,13 @@ export async function saveStartScreenSeen() {
   return getPersistentStorageUsage();
 }
 
+export async function saveLanguageSelected() {
+  const asyncStorage = await getAsyncStorage();
+  await asyncStorage.setItem(LANGUAGE_SELECTED_STORAGE_KEY, 'true');
+
+  return getPersistentStorageUsage();
+}
+
 export async function getPersistentStorageUsage() {
   const asyncStorage = await getAsyncStorage();
   const entries = await asyncStorage.multiGet([...APP_STORAGE_KEYS]);
@@ -153,6 +168,9 @@ export function mergePersistedPreferences(value: unknown): AppPreferences {
     candidate.distributionStrategy === DistributionStrategy.MaximizeComfort
       ? candidate.distributionStrategy
       : DEFAULT_APP_PREFERENCES.distributionStrategy;
+  const language = isLanguageCode(candidate.language)
+    ? candidate.language
+    : Language.English;
 
   return {
     autoSaveResults:
@@ -165,6 +183,7 @@ export function mergePersistedPreferences(value: unknown): AppPreferences {
         : DEFAULT_APP_PREFERENCES.confirmDestructiveActions,
     defaultVehicleCapacity,
     distributionStrategy,
+    language,
     showUnusedVehicles:
       typeof candidate.showUnusedVehicles === 'boolean'
         ? candidate.showUnusedVehicles
