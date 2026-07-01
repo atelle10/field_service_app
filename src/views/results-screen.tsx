@@ -104,7 +104,9 @@ function timeSharedValueWithCompletion(
 type ResultsScreenProps = {
   assignPublisherName: (passengerId: string, name: string) => void;
   assignPublisherProfile: (passengerId: string, publisherId: string) => void;
+  disableServiceView: () => void;
   distribution: DistributionResponse | null;
+  enableServiceView: () => Promise<void>;
   errorMessage: string;
   getPassengerDisplayName: (passengerId: string) => string;
   hasAssignedPublisherProfile: (passengerId: string) => boolean;
@@ -115,6 +117,7 @@ type ResultsScreenProps = {
   goToPublishers: () => void;
   goToOptions: () => void;
   isLoading: boolean;
+  incrementServiceSelection: (passengerId: string) => void;
   movePassengerToVehicle: (passengerId: string, targetVehicleId: string) => void;
   preferences: AppPreferences;
   publisherCount: number;
@@ -123,6 +126,8 @@ type ResultsScreenProps = {
   rerunPromptVisible: boolean;
   restorePassengerDefaultLabel: (passengerId: string) => void;
   saveCurrentResult: () => Promise<void>;
+  serviceSelections: Record<string, number>;
+  serviceViewEnabled: boolean;
   startOver: () => void;
   updatePublisherCount: (publisherCount: number) => void;
   updateVehicleCount: (vehicleCount: number) => void;
@@ -135,7 +140,9 @@ type ResultsScreenProps = {
 export function ResultsScreen({
   assignPublisherName,
   assignPublisherProfile,
+  disableServiceView,
   distribution,
+  enableServiceView,
   errorMessage,
   getPassengerDisplayName,
   hasAssignedPublisherProfile,
@@ -146,6 +153,7 @@ export function ResultsScreen({
   goToPublishers,
   goToOptions,
   isLoading,
+  incrementServiceSelection,
   movePassengerToVehicle,
   preferences,
   publisherCount,
@@ -154,6 +162,8 @@ export function ResultsScreen({
   rerunPromptVisible,
   restorePassengerDefaultLabel,
   saveCurrentResult,
+  serviceSelections,
+  serviceViewEnabled,
   startOver,
   updatePublisherCount,
   updateVehicleCount,
@@ -170,6 +180,7 @@ export function ResultsScreen({
   const [menuOpen, setMenuOpen] = useState(false);
   const [publisherNameInput, setPublisherNameInput] = useState('');
   const [recalculatePulse] = useState(() => new RNAnimated.Value(1));
+  const [serviceBannerPulse] = useState(() => new RNAnimated.Value(1));
   const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
   const [summaryExpanded, setSummaryExpanded] = useState(
     preferences.summaryStartsExpanded,
@@ -189,7 +200,8 @@ export function ResultsScreen({
   const activeCountOptions =
     activeCountPicker === 'publishers' ? publisherCountOptions : vehicleCountOptions;
   const activeCount = activeCountPicker === 'publishers' ? publisherCount : vehicleCount;
-  const recalculateIconColor = rerunPromptVisible ? colors.mint : colors.textSubtle;
+  const recalculateIconColor =
+    rerunPromptVisible && !serviceViewEnabled ? colors.mint : colors.textSubtle;
   const visibleVehicles = preferences.showUnusedVehicles
     ? vehicles
     : vehicles.filter((vehicle) => {
@@ -246,6 +258,36 @@ export function ResultsScreen({
     };
   }, [recalculatePulse, rerunPromptVisible]);
 
+  useEffect(() => {
+    if (!serviceViewEnabled) {
+      serviceBannerPulse.stopAnimation();
+      serviceBannerPulse.setValue(1);
+      return;
+    }
+
+    const pulseAnimation = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(serviceBannerPulse, {
+          toValue: 1.025,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(serviceBannerPulse, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    pulseAnimation.start();
+
+    return () => {
+      pulseAnimation.stop();
+      serviceBannerPulse.setValue(1);
+    };
+  }, [serviceBannerPulse, serviceViewEnabled]);
+
   useEffect(
     () => () => {
       if (dropWarningTimeoutRef.current) {
@@ -261,6 +303,19 @@ export function ResultsScreen({
 
   const closeCountPicker = () => {
     setActiveCountPicker(null);
+  };
+
+  const toggleServiceView = () => {
+    setActiveCountPicker(null);
+    setEditingVehicleId(null);
+    setMenuOpen(false);
+
+    if (serviceViewEnabled) {
+      disableServiceView();
+      return;
+    }
+
+    void enableServiceView();
   };
 
   const showDropWarning = useCallback((message: string) => {
@@ -503,7 +558,7 @@ export function ResultsScreen({
   };
 
   const openPublisherEditor = (passengerId: string) => {
-    if (suppressChipPress) {
+    if (serviceViewEnabled || suppressChipPress) {
       return;
     }
 
@@ -569,7 +624,6 @@ export function ResultsScreen({
         />
       )}
       {!menuOpen && <DrawerEdgeSwipeArea onOpen={() => setMenuOpen(true)} />}
-
       <PublisherEditorModal
         canRestoreDefault={
           selectedPassengerId ? hasAssignedPublisherProfile(selectedPassengerId) : false
@@ -613,45 +667,60 @@ export function ResultsScreen({
                 <Menu color={colors.text} size={22} strokeWidth={2.5} />
               </Pressable>
 
-              <View style={styles.countControls}>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={!hasActiveSession}
-                  onPress={togglePublisherPicker}
-                  style={({ pressed }) => [
-                    styles.countButton,
-                    !hasActiveSession && styles.countButtonDisabled,
-                    activeCountPicker === 'publishers' && styles.countButtonActive,
-                    pressed && styles.buttonPressed,
+              {serviceViewEnabled ? (
+                <RNAnimated.View
+                  style={[
+                    styles.serviceActiveBanner,
+                    { transform: [{ scale: serviceBannerPulse }] },
                   ]}>
-                  <Text
-                    style={[
-                      styles.countButtonText,
-                      !hasActiveSession && styles.countButtonTextDisabled,
-                    ]}>
-                    Publishers: {publisherCount}
+                  <Text style={styles.serviceActiveBannerTitle}>
+                    Service View Active
                   </Text>
-                </Pressable>
+                  <Text style={styles.serviceActiveBannerMeta}>
+                    {publisherCount} publishers · {vehicleCount} vehicles
+                  </Text>
+                </RNAnimated.View>
+              ) : (
+                <View style={styles.countControls}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!hasActiveSession}
+                    onPress={togglePublisherPicker}
+                    style={({ pressed }) => [
+                      styles.countButton,
+                      !hasActiveSession && styles.countButtonDisabled,
+                      activeCountPicker === 'publishers' && styles.countButtonActive,
+                      pressed && styles.buttonPressed,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.countButtonText,
+                        !hasActiveSession && styles.countButtonTextDisabled,
+                      ]}>
+                      Publishers: {publisherCount}
+                    </Text>
+                  </Pressable>
 
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={!hasActiveSession}
-                  onPress={toggleVehiclePicker}
-                  style={({ pressed }) => [
-                    styles.countButton,
-                    !hasActiveSession && styles.countButtonDisabled,
-                    activeCountPicker === 'vehicles' && styles.countButtonActive,
-                    pressed && styles.buttonPressed,
-                  ]}>
-                  <Text
-                    style={[
-                      styles.countButtonText,
-                      !hasActiveSession && styles.countButtonTextDisabled,
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!hasActiveSession}
+                    onPress={toggleVehiclePicker}
+                    style={({ pressed }) => [
+                      styles.countButton,
+                      !hasActiveSession && styles.countButtonDisabled,
+                      activeCountPicker === 'vehicles' && styles.countButtonActive,
+                      pressed && styles.buttonPressed,
                     ]}>
-                    Vehicles: {vehicleCount}
-                  </Text>
-                </Pressable>
-              </View>
+                    <Text
+                      style={[
+                        styles.countButtonText,
+                        !hasActiveSession && styles.countButtonTextDisabled,
+                      ]}>
+                      Vehicles: {vehicleCount}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
 
             {activeCountPicker && (
@@ -694,12 +763,12 @@ export function ResultsScreen({
             <RNAnimated.View style={{ transform: [{ scale: recalculatePulse }] }}>
               <Pressable
                 accessibilityRole="button"
-                disabled={!rerunPromptVisible}
+                disabled={!rerunPromptVisible || serviceViewEnabled}
                 onPress={recalculateDistribution}
                 style={({ pressed }) => [
                   styles.actionButton,
                   styles.actionButtonWithIcon,
-                  rerunPromptVisible
+                  rerunPromptVisible && !serviceViewEnabled
                     ? styles.recalculateButtonActive
                     : styles.recalculateButtonDisabled,
                   pressed && styles.buttonPressed,
@@ -708,8 +777,11 @@ export function ResultsScreen({
                 <Text
                   style={[
                     styles.actionButtonText,
-                    rerunPromptVisible && styles.recalculateButtonTextActive,
-                    !rerunPromptVisible && styles.recalculateButtonTextDisabled,
+                    rerunPromptVisible &&
+                      !serviceViewEnabled &&
+                      styles.recalculateButtonTextActive,
+                    (!rerunPromptVisible || serviceViewEnabled) &&
+                      styles.recalculateButtonTextDisabled,
                   ]}>
                   Recalculate
                 </Text>
@@ -846,6 +918,7 @@ export function ResultsScreen({
                         <Pressable
                           accessibilityLabel={`Edit ${vehicle.label} name`}
                           accessibilityRole="button"
+                          disabled={serviceViewEnabled}
                           onPress={() => startEditingVehicleLabel(vehicle)}
                           style={({ pressed }) => [
                             styles.vehicleTitleButton,
@@ -854,7 +927,9 @@ export function ResultsScreen({
                           <Text style={styles.vehicleTitle} numberOfLines={1}>
                             {vehicle.label}
                           </Text>
-                          <Pencil color={colors.textMuted} size={16} strokeWidth={2.3} />
+                          {!serviceViewEnabled && (
+                            <Pencil color={colors.textMuted} size={16} strokeWidth={2.3} />
+                          )}
                         </Pressable>
                       )}
 
@@ -871,9 +946,11 @@ export function ResultsScreen({
                     <View style={styles.capacityControls}>
                       <Pressable
                         accessibilityRole="button"
+                        disabled={serviceViewEnabled}
                         onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity - 1)}
                         style={({ pressed }) => [
                           styles.stepperButton,
+                          serviceViewEnabled && styles.stepperButtonDisabled,
                           isOverCapacity && styles.stepperButtonWarning,
                           pressed && styles.buttonPressed,
                         ]}>
@@ -900,9 +977,11 @@ export function ResultsScreen({
                       </View>
                       <Pressable
                         accessibilityRole="button"
+                        disabled={serviceViewEnabled}
                         onPress={() => updateVehicleCapacity(vehicle.id, vehicle.capacity + 1)}
                         style={({ pressed }) => [
                           styles.stepperButton,
+                          serviceViewEnabled && styles.stepperButtonDisabled,
                           isOverCapacity && styles.stepperButtonWarning,
                           pressed && styles.buttonPressed,
                         ]}>
@@ -930,23 +1009,33 @@ export function ResultsScreen({
                       const passengerLabel = getPassengerDisplayName(passengerId);
 
                       return (
-                        <DraggablePublisherChip
-                          dragOpacity={dragOpacity}
-                          dragScale={dragScale}
-                          dragX={dragX}
-                          dragY={dragY}
-                          isDragging={dragState?.passengerId === passengerId}
-                          isOverCapacity={isOverCapacity}
-                          key={passengerId}
-                          label={passengerLabel}
-                          onDragEnd={handleDragEnd}
-                          onDragFinalize={handleDragFinalize}
-                          onDragMove={handleDragMove}
-                          onDragStart={handleDragStart}
-                          onPress={() => openPublisherEditor(passengerId)}
-                          passengerId={passengerId}
-                          vehicleId={vehicle.id}
-                        />
+                        serviceViewEnabled ? (
+                          <ServicePublisherChip
+                            count={serviceSelections[passengerId] ?? 0}
+                            isOverCapacity={isOverCapacity}
+                            key={passengerId}
+                            label={passengerLabel}
+                            onPress={() => incrementServiceSelection(passengerId)}
+                          />
+                        ) : (
+                          <DraggablePublisherChip
+                            dragOpacity={dragOpacity}
+                            dragScale={dragScale}
+                            dragX={dragX}
+                            dragY={dragY}
+                            isDragging={dragState?.passengerId === passengerId}
+                            isOverCapacity={isOverCapacity}
+                            key={passengerId}
+                            label={passengerLabel}
+                            onDragEnd={handleDragEnd}
+                            onDragFinalize={handleDragFinalize}
+                            onDragMove={handleDragMove}
+                            onDragStart={handleDragStart}
+                            onPress={() => openPublisherEditor(passengerId)}
+                            passengerId={passengerId}
+                            vehicleId={vehicle.id}
+                          />
+                        )
                       );
                     })}
 
@@ -967,7 +1056,7 @@ export function ResultsScreen({
 
           <View style={styles.storageFooter}>
             <View style={styles.resultsFooterActions}>
-              {distribution && !preferences.autoSaveResults && (
+              {distribution && !preferences.autoSaveResults && !serviceViewEnabled && (
                 <Pressable
                   accessibilityRole="button"
                   onPress={saveCurrentResult}
@@ -988,6 +1077,26 @@ export function ResultsScreen({
                 ]}>
                 <History color={colors.mint} size={16} strokeWidth={2.5} />
                 <Text style={styles.historyFooterButtonText}>History</Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                disabled={!distribution}
+                onPress={toggleServiceView}
+                style={({ pressed }) => [
+                  styles.serviceFooterButton,
+                  serviceViewEnabled && styles.serviceFooterButtonActive,
+                  !distribution && styles.footerButtonDisabled,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <Text
+                  style={[
+                    styles.serviceFooterButtonText,
+                    serviceViewEnabled && styles.serviceFooterButtonTextActive,
+                    !distribution && styles.footerButtonTextDisabled,
+                  ]}>
+                  Service View
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -1149,6 +1258,44 @@ function DraggablePublisherChip({
         </Text>
       </Pressable>
     </GestureDetector>
+  );
+}
+
+function ServicePublisherChip({
+  count,
+  isOverCapacity,
+  label,
+  onPress,
+}: {
+  count: number;
+  isOverCapacity: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={`Mark ${label} selected`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.occupiedSeat,
+        styles.serviceSeat,
+        isOverCapacity && styles.occupiedSeatWarning,
+        pressed && styles.buttonPressed,
+      ]}>
+      <Text
+        style={[
+          styles.occupiedSeatText,
+          isOverCapacity && styles.occupiedSeatTextWarning,
+        ]}>
+        {label}
+      </Text>
+      {count > 0 && (
+        <View style={styles.serviceTicker}>
+          <Text style={styles.serviceTickerText}>{count}</Text>
+        </View>
+      )}
+    </Pressable>
   );
 }
 

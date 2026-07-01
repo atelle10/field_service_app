@@ -20,6 +20,8 @@ export type ActiveResultsState = {
   publisherProfiles: PublisherProfile[];
   passengerPublisherIds: Record<string, string>;
   rerunPromptVisible: boolean;
+  serviceSelections: Record<string, number>;
+  serviceViewEnabled: boolean;
   staleMessage: string;
   strategy: DistributionStrategyId;
   vehicles: VehicleInput[];
@@ -90,6 +92,8 @@ export function createLoadingResultsState(
     publisherCount,
     publisherProfiles,
     rerunPromptVisible,
+    serviceSelections: {},
+    serviceViewEnabled: false,
     staleMessage: '',
     strategy,
     vehicles,
@@ -119,6 +123,8 @@ export function createCompletedResultsState(
       publisherCount,
       publisherProfiles,
       rerunPromptVisible,
+      serviceSelections: {},
+      serviceViewEnabled: false,
       staleMessage: '',
       strategy,
       vehicles,
@@ -133,6 +139,8 @@ export function createCompletedResultsState(
       publisherCount,
       publisherProfiles,
       rerunPromptVisible: false,
+      serviceSelections: {},
+      serviceViewEnabled: false,
       staleMessage: '',
       strategy,
       vehicles,
@@ -252,9 +260,54 @@ export function createActiveResultsStateFromHistoryEntry(
     publisherCount: entry.publisherCount,
     publisherProfiles: entry.publisherProfiles,
     rerunPromptVisible: false,
+    serviceSelections: {},
+    serviceViewEnabled: false,
     staleMessage: '',
     strategy: entry.strategy,
     vehicles: entry.vehicles,
+  };
+}
+
+export function enableServiceViewInResultsState(
+  state: ActiveResultsState,
+): ActiveResultsState {
+  if (!state.distribution || state.serviceViewEnabled) {
+    return state;
+  }
+
+  return {
+    ...state,
+    serviceViewEnabled: true,
+  };
+}
+
+export function disableServiceViewInResultsState(
+  state: ActiveResultsState,
+): ActiveResultsState {
+  if (!state.serviceViewEnabled) {
+    return state;
+  }
+
+  return {
+    ...state,
+    serviceViewEnabled: false,
+  };
+}
+
+export function incrementServiceSelectionInResultsState(
+  state: ActiveResultsState,
+  passengerId: string,
+): ActiveResultsState {
+  if (!state.serviceViewEnabled || !isPassengerAssigned(state, passengerId)) {
+    return state;
+  }
+
+  return {
+    ...state,
+    serviceSelections: {
+      ...state.serviceSelections,
+      [passengerId]: (state.serviceSelections[passengerId] ?? 0) + 1,
+    },
   };
 }
 
@@ -624,6 +677,14 @@ function mergePublisherProfiles(
   }
 
   return mergedProfiles;
+}
+
+function isPassengerAssigned(state: ActiveResultsState, passengerId: string) {
+  return Boolean(
+    state.distribution?.assignments.some((assignment) =>
+      assignment.passengerIds.includes(passengerId),
+    ),
+  );
 }
 
 function normalizePublisherName(name: string) {

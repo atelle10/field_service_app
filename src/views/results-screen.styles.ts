@@ -50,6 +50,31 @@ export const styles = StyleSheet.create({
     gap: 8,
     marginLeft: 6,
   },
+  serviceActiveBanner: {
+    flex: 1,
+    minHeight: 52,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.mint,
+    borderRadius: radii.small,
+    backgroundColor: colors.mint,
+    marginLeft: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  serviceActiveBannerTitle: {
+    color: colors.background,
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  serviceActiveBannerMeta: {
+    color: colors.deepForest,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+    textAlign: 'center',
+  },
   countButton: {
     flex: 1,
     minHeight: 44,
@@ -125,6 +150,7 @@ export const styles = StyleSheet.create({
   actionBar: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     justifyContent: 'space-between',
   },
@@ -168,6 +194,7 @@ export const styles = StyleSheet.create({
   resultsFooterActions: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     justifyContent: 'flex-end',
   },
@@ -204,6 +231,40 @@ export const styles = StyleSheet.create({
     color: colors.mint,
     fontSize: 13,
     fontWeight: '700',
+  },
+  serviceFooterButton: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.mint,
+    borderRadius: radii.small,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  serviceFooterButtonActive: {
+    borderColor: colors.mint,
+    backgroundColor: colors.deepForest,
+    shadowColor: colors.mint,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+  },
+  serviceFooterButtonText: {
+    color: colors.mint,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  serviceFooterButtonTextActive: {
+    color: colors.text,
+  },
+  footerButtonDisabled: {
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  footerButtonTextDisabled: {
+    color: colors.textSubtle,
   },
   loadingScreen: {
     flex: 1,
@@ -425,6 +486,9 @@ export const styles = StyleSheet.create({
   stepperButtonWarning: {
     borderColor: colors.dangerText,
   },
+  stepperButtonDisabled: {
+    opacity: 0.45,
+  },
   stepperText: {
     color: colors.mint,
     fontSize: 22,
@@ -474,6 +538,10 @@ export const styles = StyleSheet.create({
   occupiedSeatDragging: {
     opacity: 0.28,
   },
+  serviceSeat: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   occupiedSeatText: {
     color: colors.text,
     fontSize: 14,
@@ -500,6 +568,20 @@ export const styles = StyleSheet.create({
     color: colors.textSubtle,
     fontSize: 14,
     fontWeight: '600',
+  },
+  serviceTicker: {
+    minWidth: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    paddingHorizontal: 7,
+  },
+  serviceTickerText: {
+    color: colors.background,
+    fontSize: 12,
+    fontWeight: '800',
   },
   dragWarningPanel: {
     borderWidth: 1,

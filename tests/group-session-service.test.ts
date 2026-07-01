@@ -16,11 +16,14 @@ import {
   createActiveResultsStateFromHistoryEntry,
   createCompletedResultsState,
   createEmptyGroupSessionState,
+  disableServiceViewInResultsState,
+  enableServiceViewInResultsState,
   deleteAllSavedResultsFromSessionState,
   deleteAllPublisherProfilesFromSessionState,
   deleteResultHistoryEntryFromSessionState,
   getHistoryPassengerDisplayName,
   getPassengerDisplayName,
+  incrementServiceSelectionInResultsState,
   markResultsStale,
   movePassengerToVehicleInResultsState,
   removePublisherProfileFromSessionState,
@@ -104,6 +107,72 @@ describe('group session service', () => {
     assert.equal(renamedState.distribution?.assignments[0].label, 'Roberto');
     assert.equal(renamedState.rerunPromptVisible, false);
     assert.equal(renamedState.distribution?.summary, completedState.distribution?.summary);
+  });
+
+  it('enables service view without recalculating or marking results stale', () => {
+    const completedState = createCompletedResultsState(6, createDefaultVehicles(2), false);
+    const serviceState = enableServiceViewInResultsState(completedState);
+
+    assert.equal(serviceState.serviceViewEnabled, true);
+    assert.deepEqual(serviceState.serviceSelections, {});
+    assert.equal(serviceState.distribution, completedState.distribution);
+    assert.equal(serviceState.rerunPromptVisible, false);
+    assert.equal(serviceState.staleMessage, '');
+  });
+
+  it('does not enable service view before a distribution exists', () => {
+    const loadingState = {
+      ...createCompletedResultsState(6, createDefaultVehicles(2), false),
+      distribution: null,
+    };
+
+    assert.equal(enableServiceViewInResultsState(loadingState), loadingState);
+  });
+
+  it('increments service selections for assigned passengers only', () => {
+    const serviceState = enableServiceViewInResultsState(
+      createCompletedResultsState(6, createDefaultVehicles(2), false),
+    );
+    const firstIncrement = incrementServiceSelectionInResultsState(
+      serviceState,
+      'publisher-1',
+    );
+    const secondIncrement = incrementServiceSelectionInResultsState(
+      firstIncrement,
+      'publisher-1',
+    );
+    const missingPassengerState = incrementServiceSelectionInResultsState(
+      secondIncrement,
+      'publisher-99',
+    );
+
+    assert.equal(secondIncrement.serviceSelections['publisher-1'], 2);
+    assert.equal(missingPassengerState, secondIncrement);
+    assert.equal(secondIncrement.distribution, serviceState.distribution);
+    assert.equal(secondIncrement.rerunPromptVisible, false);
+  });
+
+  it('does not increment service selections when service view is disabled', () => {
+    const completedState = createCompletedResultsState(6, createDefaultVehicles(2), false);
+
+    assert.equal(
+      incrementServiceSelectionInResultsState(completedState, 'publisher-1'),
+      completedState,
+    );
+  });
+
+  it('disables service view while preserving service selection counts', () => {
+    const serviceState = incrementServiceSelectionInResultsState(
+      enableServiceViewInResultsState(
+        createCompletedResultsState(6, createDefaultVehicles(2), false),
+      ),
+      'publisher-1',
+    );
+    const disabledState = disableServiceViewInResultsState(serviceState);
+
+    assert.equal(disabledState.serviceViewEnabled, false);
+    assert.deepEqual(disabledState.serviceSelections, { 'publisher-1': 1 });
+    assert.equal(disabledState.distribution, serviceState.distribution);
   });
 
   it('moves a passenger to another vehicle with open capacity', () => {

@@ -36,7 +36,10 @@ import {
   deleteAllSavedResultsFromSessionState,
   deleteAllPublisherProfilesFromSessionState,
   deleteResultHistoryEntryFromSessionState,
+  disableServiceViewInResultsState,
+  enableServiceViewInResultsState,
   type GroupSessionState,
+  incrementServiceSelectionInResultsState,
   markResultsStale,
   movePassengerToVehicleInResultsState,
   removePublisherProfileFromSessionState,
@@ -80,14 +83,17 @@ type GroupSessionContextValue = {
   completeStartScreen: () => void;
   confirmDestructiveAction: () => void;
   deleteAllPublisherProfiles: () => void;
+  disableServiceView: () => void;
   destructiveActionConfirmation: DestructiveActionConfirmation | null;
   dismissDestructiveActionConfirmation: () => void;
   dismissStorageActionFeedback: () => void;
+  enableServiceView: () => Promise<void>;
   hasHydratedPersistedData: boolean;
   hasActiveSession: boolean;
   hasSeenStartScreen: boolean;
   preferences: AppPreferences;
   publisherProfiles: ActiveResultsState['publisherProfiles'];
+  incrementServiceSelection: (passengerId: string) => void;
   recalculateDistribution: () => void;
   movePassengerToVehicle: (passengerId: string, targetVehicleId: string) => void;
   deleteAllSavedResults: () => void;
@@ -164,6 +170,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     try {
       const nextStorageUsageBytes = await clearPersistentStorage();
       setStorageUsageBytes(nextStorageUsageBytes);
+      setHasSeenStartScreen(false);
       setState((currentState) => ({
         ...currentState,
         activeSession: currentState.activeSession
@@ -647,23 +654,14 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
 
     const historyId = historyIdRef.current + 1;
     historyIdRef.current = historyId;
-    const createdAt = new Date().toISOString();
-
-    const entry: ResultsHistoryEntry = {
-      id: `saved-result-${Date.now()}-${historyId}`,
-      createdAt,
-      distribution: activeSession.distribution,
-      passengerPublisherIds: activeSession.passengerPublisherIds,
-      publisherCount: activeSession.publisherCount,
-      publisherProfiles: activeSession.publisherProfiles,
-      strategy: activeSession.strategy,
-      vehicles: activeSession.vehicles,
-    };
+    const entry = createSavedResultEntry(
+      activeSession,
+      `saved-result-${Date.now()}-${historyId}`,
+    );
 
     try {
       const nextStorageUsageBytes = await saveResultHistoryEntry(entry);
       setStorageUsageBytes(nextStorageUsageBytes);
-      setHasSeenStartScreen(false);
       setState((currentState) => ({
         ...currentState,
         savedResults: [...currentState.savedResults, entry],
@@ -680,6 +678,72 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         tone: 'error',
       });
     }
+  };
+
+  const enableServiceView = async () => {
+    const activeSession = state.activeSession;
+
+    if (!activeSession?.distribution || activeSession.serviceViewEnabled) {
+      return;
+    }
+
+    const historyId = historyIdRef.current + 1;
+    historyIdRef.current = historyId;
+    const entry = createSavedResultEntry(
+      activeSession,
+      `saved-result-${Date.now()}-${historyId}`,
+    );
+
+    try {
+      const nextStorageUsageBytes = await saveResultHistoryEntry(entry);
+      setStorageUsageBytes(nextStorageUsageBytes);
+      setState((currentState) => {
+        if (!currentState.activeSession) {
+          return currentState;
+        }
+
+        return {
+          ...currentState,
+          activeSession: enableServiceViewInResultsState(currentState.activeSession),
+          savedResults: [...currentState.savedResults, entry],
+        };
+      });
+    } catch (error) {
+      setStorageActionFeedback({
+        message: getStorageActionErrorMessage(error),
+        title: 'Service View could not start',
+        tone: 'error',
+      });
+    }
+  };
+
+  const disableServiceView = () => {
+    setState((currentState) => {
+      if (!currentState.activeSession) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        activeSession: disableServiceViewInResultsState(currentState.activeSession),
+      };
+    });
+  };
+
+  const incrementServiceSelection = (passengerId: string) => {
+    setState((currentState) => {
+      if (!currentState.activeSession) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        activeSession: incrementServiceSelectionInResultsState(
+          currentState.activeSession,
+          passengerId,
+        ),
+      };
+    });
   };
 
   const deleteSavedResultImmediately = async (resultId: string) => {
@@ -820,12 +884,15 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         deleteAllPublisherProfiles,
         deleteAllSavedResults,
         deleteSavedResult,
+        disableServiceView,
         destructiveActionConfirmation,
         dismissDestructiveActionConfirmation,
         dismissStorageActionFeedback,
+        enableServiceView,
         hasHydratedPersistedData,
         hasActiveSession: state.activeSession !== null,
         hasSeenStartScreen,
+        incrementServiceSelection,
         movePassengerToVehicle,
         preferences: state.preferences,
         publisherProfiles: state.publisherProfiles,
@@ -848,6 +915,26 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       {children}
     </GroupSessionContext.Provider>
   );
+}
+
+function createSavedResultEntry(
+  activeSession: ActiveResultsState,
+  id: string,
+): ResultsHistoryEntry {
+  if (!activeSession.distribution) {
+    throw new Error('Cannot save a result before a distribution exists.');
+  }
+
+  return {
+    id,
+    createdAt: new Date().toISOString(),
+    distribution: activeSession.distribution,
+    passengerPublisherIds: activeSession.passengerPublisherIds,
+    publisherCount: activeSession.publisherCount,
+    publisherProfiles: activeSession.publisherProfiles,
+    strategy: activeSession.strategy,
+    vehicles: activeSession.vehicles,
+  };
 }
 
 export function useGroupSession() {
